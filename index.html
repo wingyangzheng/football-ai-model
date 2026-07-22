@@ -1,0 +1,3224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>足彩大数据量化模拟社区</title>
+    <style>
+        :root {
+            --bg: #f5f6f8;
+            --surface: #ffffff;
+            --surface-2: #f9fafb;
+            --surface-3: #f3f4f6;
+            --border: #eceef1;
+            --border-strong: #e2e5e9;
+            --text: #1a1d23;
+            --text-2: #525964;
+            --text-3: #8b909a;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --accent-hover: #1d4ed8;
+            --success: #16a34a;
+            --success-light: #f0fdf4;
+            --success-bg: #dcfce7;
+            --danger: #dc2626;
+            --danger-bg: #fee2e2;
+            --gold: #f59e0b;
+            --gold-bg: #fef3c7;
+            --gold-text: #92400e;
+            --shadow-sm: 0 1px 2px rgba(16,24,40,0.04);
+            --shadow-md: 0 4px 16px -4px rgba(16,24,40,0.08), 0 2px 6px -2px rgba(16,24,40,0.04);
+            --shadow-lg: 0 12px 32px -8px rgba(16,24,40,0.12), 0 4px 12px -4px rgba(16,24,40,0.06);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --mono: 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body { width: 100%; min-width: 100%; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            width: 100%;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: rgba(255,255,255,0.82);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            padding: 14px 20px;
+            padding-top: calc(14px + env(safe-area-inset-top));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            position: sticky; top: 0;
+            z-index: 1000;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left-actions { display: flex; align-items: center; gap: 8px; margin-left: 4px; }
+        .vip-entry-btn {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 3px 10px; border-radius: 12px;
+            font-size: 10px; font-weight: 700; cursor: pointer;
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white; border: none; white-space: nowrap;
+            transition: all 0.15s; line-height: 1.5;
+        }
+        .vip-entry-btn:active { transform: scale(0.95); }
+        .vip-entry-btn.vip-active {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+        }
+        .avatar {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; font-weight: 700; color: var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+        .user-info { display: flex; flex-direction: column; gap: 1px; }
+        .user-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+        .user-title { font-size: 11px; color: var(--text-3); }
+        .header-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+        .points-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+        .points-value { font-size: 17px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.02em; }
+        .energy-bar-wrap { display: flex; align-items: center; gap: 6px; width: 120px; }
+        .energy-bar {
+            flex: 1; height: 10px; background: #e5e7eb; border-radius: 3px;
+            overflow: hidden; position: relative; border: 1px solid #d1d5db;
+        }
+        .energy-bar-fill {
+            height: 100%; border-radius: 2px; transition: width 0.5s ease, background 0.5s ease;
+        }
+        .energy-bar-tip {
+            width: 3px; height: 5px; background: #d1d5db; border-radius: 0 2px 2px 0;
+            flex-shrink: 0;
+        }
+
+        /* ===== Layout ===== */
+        .main-content { flex: 1; overflow-y: auto; padding-bottom: 80px; transition: padding-bottom 0.3s ease; width: 100%; min-width: 100%; }
+        .main-content.has-bet-slip { padding-bottom: 150px; }
+        .tab-content { display: none; width: 100%; min-width: 100%; }
+        .tab-content.active { display: block; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== Home ===== */
+        .home-section { padding: 12px 12px 8px; }
+        .home-section .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; padding: 4px 4px 10px; }
+
+        .featured-card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            transition: box-shadow 0.2s ease;
+        }
+        .featured-card:hover { box-shadow: var(--shadow-lg); }
+        .featured-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px;
+        }
+        .league-tag {
+            background: var(--surface-3); color: var(--text-2);
+            padding: 4px 10px; border-radius: 6px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+        }
+        .match-status { font-size: 11px; color: var(--text-3); font-weight: 500; }
+
+        .featured-teams {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+        }
+        .featured-team {
+            display: flex; flex-direction: column; align-items: center; flex: 1; gap: 8px;
+        }
+        .featured-team-name {
+            font-size: 15px; font-weight: 600; color: var(--text);
+            letter-spacing: -0.01em;
+        }
+        .featured-flag {
+            width: 48px; height: 48px; border-radius: 14px;
+            background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; color: var(--text-2);
+            border: 1px solid var(--border);
+        }
+        .featured-vs {
+            font-size: 11px; color: var(--text-3); font-weight: 600;
+            padding: 4px 10px; background: var(--surface-3); border-radius: 6px;
+        }
+        .featured-time {
+            text-align: center; font-size: 12px; color: var(--text-3);
+            margin-bottom: 16px; font-weight: 500;
+        }
+        .featured-indices {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+            margin-bottom: 16px;
+        }
+        .featured-index-item {
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); padding: 12px 8px; text-align: center;
+            cursor: pointer; transition: all 0.18s ease;
+        }
+        .featured-index-item:active {
+            transform: scale(0.96);
+            background: var(--accent-light); border-color: var(--accent);
+        }
+        .featured-index-label { font-size: 11px; color: var(--text-3); margin-bottom: 4px; font-weight: 500; }
+        .featured-index-value {
+            font-size: 18px; font-weight: 700; color: var(--text);
+            font-family: var(--mono); letter-spacing: -0.02em;
+        }
+
+        .sentiment-bar {
+            background: var(--surface-2); border-radius: var(--radius-sm); padding: 12px 14px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+        .sentiment-title { font-size: 12px; color: var(--text-2); margin-bottom: 8px; font-weight: 600; }
+        .sentiment-chart {
+            display: flex; height: 5px; border-radius: 3px; overflow: hidden;
+            margin-bottom: 8px; background: var(--border-strong);
+        }
+        .sentiment-home { background: var(--accent); transition: flex 0.3s; }
+        .sentiment-draw { background: #cbd5e1; transition: flex 0.3s; }
+        .sentiment-away { background: #94a3b8; transition: flex 0.3s; }
+        .sentiment-stats {
+            display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3);
+        }
+        .sentiment-item { display: flex; align-items: center; gap: 4px; font-weight: 500; }
+        .sentiment-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .sentiment-dot.home { background: var(--accent); }
+        .sentiment-dot.draw { background: #cbd5e1; }
+        .sentiment-dot.away { background: #94a3b8; }
+
+        .go-btn {
+            width: 100%; padding: 13px;
+            background: var(--text); color: white;
+            border: none; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.18s ease; letter-spacing: -0.01em;
+        }
+        .go-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+        /* ===== Ranking Mini ===== */
+        .ranking-mini-card {
+            background: var(--surface); border-radius: var(--radius-xl); padding: 18px;
+            margin-bottom: 14px; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .ranking-mini-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+        }
+        .ranking-mini-title { font-size: 14px; font-weight: 700; color: var(--text); }
+        .view-all { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 600; }
+        .view-all:active { opacity: 0.7; }
+        .ranking-mini-list { display: flex; gap: 8px; }
+        .ranking-mini-item {
+            flex: 1; text-align: center; padding: 12px 6px;
+            background: var(--surface-2); border-radius: var(--radius-sm);
+            border: 1px solid var(--border); transition: all 0.18s ease;
+        }
+        .ranking-mini-item:active { transform: scale(0.96); }
+        .ranking-mini-rank {
+            width: 24px; height: 24px; border-radius: 50%;
+            margin: 0 auto 6px; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            background: var(--surface-3); color: var(--text-2);
+        }
+        .ranking-mini-rank.gold { background: var(--gold-bg); color: var(--gold-text); }
+        .ranking-mini-name { font-size: 11px; color: var(--text-2); margin-bottom: 3px; font-weight: 500; }
+        .ranking-mini-rate { font-size: 15px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+
+        /* ===== Article ===== */
+        .article-card {
+            background: var(--surface); border-radius: var(--radius-xl); padding: 18px;
+            margin-bottom: 14px; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border); cursor: pointer; transition: all 0.18s ease;
+        }
+        .article-card:active { transform: scale(0.98); }
+        .article-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; line-height: 1.45; letter-spacing: -0.01em; }
+        .article-summary { font-size: 12px; color: var(--text-2); line-height: 1.55; margin-bottom: 8px; }
+        .article-meta { font-size: 11px; color: var(--text-3); }
+
+        /* ===== Match Section ===== */
+        .match-section { padding: 6px 0 8px; width: 100%; }
+        .match-section .section-title { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; padding: 4px 12px 10px; }
+
+        .play-tabs {
+            display: flex; background: var(--surface-2); border-radius: 0;
+            padding: 6px 4px; margin: 0 0 8px;
+            border-left: none; border-right: none;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            box-shadow: none;
+        }
+        .play-tabs::-webkit-scrollbar { display: none; }
+        .play-tab {
+            flex: 1; min-width: 68px; padding: 12px 8px; text-align: center;
+            font-size: 14px; font-weight: 600; border-radius: 8px;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap; color: var(--text-2); letter-spacing: -0.01em;
+        }
+        .play-tab.active {
+            background: var(--text); color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .match-card {
+            background: var(--surface); border-radius: 0; padding: 10px 8px 12px;
+            margin-bottom: 6px; box-shadow: none;
+            border-left: none; border-right: none;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        .match-card:active { background: var(--surface-2); }
+        .match-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; padding: 0 4px;
+        }
+        .match-teams {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+            padding: 0 4px;
+        }
+        .team { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 3px; }
+        .team:first-child { align-items: flex-start; padding-left: 4px; }
+        .team:last-child { align-items: flex-end; padding-right: 4px; }
+        .team-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+        .team-flag {
+            width: 52px; height: 52px; border-radius: 14px;
+            background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 700; color: var(--text-2);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .vs {
+            font-size: 10px; color: var(--text-3); font-weight: 700;
+            padding: 3px 8px; background: var(--surface-3); border-radius: 6px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+        .match-time {
+            font-size: 12px; color: var(--text-2); text-align: center;
+            margin-bottom: 8px; font-weight: 500;
+        }
+
+        .indices-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%;
+        }
+        .index-item {
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); padding: 14px 4px; text-align: center;
+            cursor: pointer; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 68px;
+        }
+        .index-item:active { transform: scale(0.96); }
+        .index-item.selected {
+            background: var(--accent-light); border-color: var(--accent);
+            box-shadow: 0 0 0 1.5px var(--accent), 0 2px 8px rgba(37, 99, 235, 0.12);
+        }
+        .index-label { font-size: 12px; color: var(--text-3); margin-bottom: 4px; font-weight: 500; }
+        .index-value {
+            font-size: 24px; font-weight: 700; color: var(--text);
+            font-family: var(--mono); letter-spacing: -0.03em; line-height: 1;
+        }
+        .index-item.selected .index-value { color: var(--accent); }
+        .index-item.selected .index-label { color: var(--accent); font-weight: 600; }
+
+        .handicap-badge {
+            display: inline-block; background: var(--gold-bg); color: var(--gold-text);
+            padding: 3px 10px; border-radius: 6px; font-size: 10px;
+            font-weight: 700; letter-spacing: 0.01em; margin-bottom: 6px;
+            text-align: center;
+        }
+
+        /* ===== Tabs (Ranking) ===== */
+        .ranking-section { padding: 12px 12px 8px; }
+        .ranking-section .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; padding: 4px 4px 10px; }
+        .ranking-tabs {
+            display: flex; background: var(--surface-2); border-radius: var(--radius-md);
+            padding: 4px; margin-bottom: 14px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .ranking-tab {
+            flex: 1; padding: 10px 14px; text-align: center;
+            font-size: 13px; font-weight: 600; border-radius: 10px;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap; color: var(--text-2); letter-spacing: -0.01em;
+        }
+        .ranking-tab.active {
+            background: var(--text); color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ===== Score / Goals / HTFT grids ===== */
+        .score-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; width: 100%;
+        }
+        .goals-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: 100%;
+        }
+        .htft-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 100%;
+        }
+        .score-item, .goal-item, .htft-item {
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); padding: 12px 4px; text-align: center;
+            cursor: pointer; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 56px;
+        }
+        .score-item:active, .goal-item:active, .htft-item:active { transform: scale(0.95); }
+        .score-item.selected, .goal-item.selected, .htft-item.selected {
+            background: var(--accent-light); border-color: var(--accent);
+            box-shadow: 0 0 0 1.5px var(--accent), 0 2px 8px rgba(37, 99, 235, 0.1);
+        }
+        .score-label, .goal-label, .htft-label { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+        .score-value, .goal-value, .htft-value { font-size: 13px; color: var(--accent); font-weight: 700; font-family: var(--mono); }
+        .score-item.selected .score-label, .goal-item.selected .goal-label, .htft-item.selected .htft-label { color: var(--accent); }
+
+        /* ===== Bet Slip Bar (Sticky Bottom) ===== */
+        .bet-slip-bar {
+            position: fixed; bottom: 60px; left: 0; right: 0;
+            background: var(--surface);
+            padding: 12px 16px;
+            display: none;
+            box-shadow: 0 -8px 32px -8px rgba(16, 24, 40, 0.12), 0 -2px 8px -2px rgba(16, 24, 40, 0.06);
+            border-top: 1px solid var(--border);
+            z-index: 1500;
+            animation: slideUpBar 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUpBar { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .bet-slip-bar.show { display: block; }
+        .bet-slip-bar-row {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px;
+        }
+        .bet-slip-info { flex: 1; min-width: 0; }
+        .bet-slip-count {
+            font-size: 14px; color: var(--text); font-weight: 700;
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 4px;
+        }
+        .bet-slip-count .badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--accent); color: white;
+            font-size: 11px; font-weight: 700;
+            min-width: 22px; height: 22px; padding: 0 6px;
+            border-radius: 11px;
+            font-family: var(--mono);
+        }
+        .bet-slip-detail {
+            font-size: 12px; color: var(--text-2);
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .bet-slip-detail .sep { color: var(--border-strong); }
+        .bet-slip-detail strong {
+            color: var(--accent); font-weight: 700; font-family: var(--mono); font-size: 13px;
+        }
+        .bet-slip-btn {
+            flex-shrink: 0;
+            background: var(--text); color: white; border: none;
+            border-radius: var(--radius-sm);
+            padding: 13px 22px; font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: all 0.15s ease;
+            letter-spacing: -0.01em;
+            box-shadow: var(--shadow-sm);
+        }
+        .bet-slip-btn:active { transform: scale(0.96); opacity: 0.9; }
+        .bet-slip-btn:disabled {
+            background: var(--surface-3); color: var(--text-3);
+            cursor: not-allowed; box-shadow: none;
+        }
+
+        /* ===== Bet Slip List ===== */
+        .bet-slip-list { margin-bottom: 12px; max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .bet-slip-item {
+            background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px;
+            margin-bottom: 7px; display: flex; justify-content: space-between;
+            align-items: center; border: 1px solid var(--border);
+        }
+        .bet-slip-item-info { flex: 1; }
+        .bet-slip-item-match { font-size: 12px; color: var(--text); font-weight: 600; }
+        .bet-slip-item-option { font-size: 11px; color: var(--accent); margin-top: 2px; font-weight: 600; }
+        .bet-slip-item-remove {
+            background: none; border: none; color: var(--text-3);
+            font-size: 18px; cursor: pointer; padding: 4px 8px; transition: color 0.15s;
+        }
+        .bet-slip-item-remove:active { color: var(--danger); }
+
+        /* ===== Multiplier ===== */
+        .multiplier-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+        .multiplier-label { font-size: 13px; color: var(--text); font-weight: 700; }
+        .multiplier-control { display: flex; align-items: center; gap: 6px; }
+        .multiplier-btn {
+            width: 32px; height: 32px; border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border); background: var(--surface);
+            font-size: 18px; color: var(--text-2); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .multiplier-btn:active { background: var(--surface-3); transform: scale(0.92); }
+        .multiplier-input {
+            width: 54px; height: 32px; text-align: center;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 700; color: var(--text);
+            font-family: var(--mono); background: var(--surface);
+            outline: none; transition: border-color 0.15s;
+        }
+        .multiplier-input:focus { border-color: var(--accent); }
+        .multiplier-quick { display: flex; gap: 4px; }
+        .multiplier-quick-btn {
+            padding: 5px 10px; border-radius: 6px;
+            border: 1.5px solid var(--border); background: var(--surface);
+            font-size: 11px; color: var(--text-2); cursor: pointer;
+            font-weight: 600; transition: all 0.15s ease;
+        }
+        .multiplier-quick-btn:active { transform: scale(0.93); }
+        .multiplier-quick-btn.active {
+            background: var(--text); color: white; border-color: var(--text);
+        }
+
+        .handicap-badge {
+            display: inline-block; background: var(--gold-bg); color: var(--gold-text);
+            padding: 3px 10px; border-radius: 6px; font-size: 10px;
+            font-weight: 700; letter-spacing: 0.01em;
+        }
+
+        /* ===== Ranking Card ===== */
+        .ranking-card {
+            background: var(--surface); border-radius: var(--radius-lg); overflow: hidden;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+        }
+        .ranking-header {
+            background: var(--surface-2);
+            color: var(--text-3); padding: 10px 16px; display: flex;
+            justify-content: space-between; font-size: 11px; font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .ranking-row {
+            display: flex; align-items: center; padding: 12px 16px;
+            border-bottom: 1px solid var(--border); transition: background 0.15s;
+            gap: 8px;
+        }
+        .ranking-row:last-child { border-bottom: none; }
+        .ranking-row:active { background: var(--surface-2); }
+        .rank-number {
+            width: 24px; height: 24px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; margin-right: 4px;
+            background: var(--surface-3); color: var(--text-2);
+            flex-shrink: 0;
+        }
+        .rank-number.top-three { background: var(--gold-bg); color: var(--gold-text); }
+        .rank-avatar {
+            width: 32px; height: 32px; border-radius: 9px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: var(--accent);
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .rank-info { flex: 1; min-width: 0; }
+        .rank-name { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+        .rank-team { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+        .rank-rate {
+            font-size: 16px; font-weight: 700; color: var(--text);
+            font-family: var(--mono); letter-spacing: -0.02em;
+            flex-shrink: 0;
+            margin-right: 8px;
+        }
+        .rank-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .rank-btn {
+            padding: 6px 10px; border-radius: 7px; font-size: 11px;
+            font-weight: 600; border: 1px solid var(--border); cursor: pointer;
+            transition: all 0.15s ease; text-align: center; letter-spacing: -0.01em;
+            flex-shrink: 0;
+        }
+        .rank-btn:active { transform: scale(0.96); }
+        .rank-btn-info { background: var(--surface-2); color: var(--text-2); }
+        .rank-btn-follow { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+        .rank-btn-follow.following { background: var(--success-light); color: var(--success); border-color: var(--success); }
+
+        /* ===== Player Detail Modal ===== */
+        .player-modal { max-width: 100% !important; max-height: 85vh; display: flex; flex-direction: column; }
+        #playerModalContent { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .player-modal-footer {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            background: var(--surface); flex-shrink: 0;
+        }
+        .player-modal-header {
+            padding: 20px 16px; text-align: center;
+            background: linear-gradient(135deg, var(--accent-light), var(--surface-2));
+            border-bottom: 1px solid var(--border);
+        }
+        .player-avatar-lg {
+            width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 10px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; font-weight: 700; color: var(--accent);
+            border: 2px solid var(--surface); box-shadow: var(--shadow-md);
+        }
+        .player-name-lg { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; margin-bottom: 4px; }
+        .player-title-lg { font-size: 12px; color: var(--text-2); }
+        .player-stats-row {
+            display: flex; padding: 14px 16px; gap: 8px;
+            background: var(--surface); border-bottom: 1px solid var(--border);
+        }
+        .player-stat { flex: 1; text-align: center; }
+        .player-stat-value { font-size: 18px; font-weight: 700; color: var(--text); font-family: var(--mono); letter-spacing: -0.02em; }
+        .player-stat-label { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+        .player-section-title { font-size: 13px; font-weight: 700; color: var(--text); padding: 14px 16px 8px; letter-spacing: -0.01em; }
+        .funds-chart-container { padding: 0 12px 12px; }
+        .funds-module {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px 12px 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .funds-chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 0 2px;
+        }
+        .funds-chart-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-2);
+        }
+        .funds-time-tabs {
+            display: flex;
+            background: var(--surface-2);
+            border-radius: 20px;
+            padding: 2px;
+            gap: 1px;
+        }
+        .funds-time-tab {
+            border: none;
+            background: transparent;
+            font-size: 10px;
+            padding: 4px 9px;
+            border-radius: 18px;
+            color: var(--text-3);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .funds-time-tab.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 1px 3px rgba(59,130,246,0.3);
+        }
+        .funds-chart-scroll {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -2px;
+        }
+        .funds-chart-scroll::-webkit-scrollbar { height: 4px; }
+        .funds-chart-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .funds-svg {
+            min-width: 100%;
+            width: auto;
+            height: 220px;
+            display: block;
+        }
+        .bet-history-list { padding: 0 16px 12px; max-height: 300px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .bet-history-list::-webkit-scrollbar { width: 3px; }
+        .bet-history-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .bankruptcy-list { max-height: 200px; overflow-y: auto; padding: 0 16px 12px; -webkit-overflow-scrolling: touch; }
+        .bankruptcy-list::-webkit-scrollbar { width: 3px; }
+        .bankruptcy-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+        .bet-history-item {
+            display: flex; align-items: center; padding: 10px 0;
+            border-bottom: 1px solid var(--border); gap: 8px;
+        }
+        .bet-history-item:last-child { border-bottom: none; }
+        .bet-history-league {
+            font-size: 10px; font-weight: 600; color: var(--text-3);
+            background: var(--surface-3); padding: 3px 6px; border-radius: 5px;
+            flex-shrink: 0;
+        }
+        .bet-history-info { flex: 1; min-width: 0; }
+        .bet-history-match { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bet-history-detail { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+        .bet-history-result {
+            font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
+            flex-shrink: 0;
+        }
+        .bet-history-result.win { background: var(--success-light); color: var(--success); }
+        .bet-history-result.lose { background: var(--danger-bg); color: var(--danger); }
+        .bet-history-result.pending { background: #f3f4f6; color: #9ca3af; }
+        .player-follow-btn {
+            width: 100%; padding: 13px;
+            background: var(--text); color: white; border: none; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s ease;
+        }
+        .player-follow-btn:active { transform: scale(0.97); }
+        .player-follow-btn.following { background: var(--success); }
+
+        /* ===== Profile ===== */
+        .profile-section { padding: 12px 12px 8px; }
+        .profile-section .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; padding: 4px 4px 10px; }
+        .profile-card {
+            background: var(--surface); border-radius: var(--radius-xl); padding: 22px;
+            margin-bottom: 14px; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+        .profile-avatar {
+            width: 60px; height: 60px; border-radius: 16px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 700; color: var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+        .profile-info { flex: 1; }
+        .profile-name { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 2px; letter-spacing: -0.02em; }
+        .profile-id { font-size: 11px; color: var(--text-3); margin-bottom: 5px; font-family: var(--mono); }
+        .profile-level {
+            display: inline-block; background: var(--accent-light); color: var(--accent);
+            padding: 3px 10px; border-radius: 6px;
+            font-size: 11px; font-weight: 600;
+        }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+        .stat-item {
+            background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 8px; text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-value {
+            font-size: 19px; font-weight: 700; color: var(--text);
+            font-family: var(--mono); margin-bottom: 3px; letter-spacing: -0.02em;
+        }
+        .stat-label { font-size: 10px; color: var(--text-3); font-weight: 500; }
+        .roi-chart {
+            background: var(--surface-2); border-radius: var(--radius-sm); padding: 16px;
+            border: 1px solid var(--border);
+        }
+        .chart-title { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 12px; }
+        .chart-bars { display: flex; justify-content: space-between; align-items: flex-end; height: 64px; gap: 4px; }
+        .chart-bar {
+            flex: 1; background: linear-gradient(to top, var(--accent), #60a5fa);
+            border-radius: 4px 4px 0 0; transition: height 0.3s ease;
+        }
+        .chart-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--text-3); }
+
+        /* ===== Record ===== */
+        .record-card {
+            background: var(--surface); border-radius: var(--radius-xl); padding: 18px;
+            margin-bottom: 14px; box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+        .record-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .record-title { font-size: 14px; font-weight: 700; color: var(--text); }
+        .record-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 11px 0; border-bottom: 1px solid var(--border);
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-match { font-size: 12px; color: var(--text); font-weight: 600; }
+        .record-option { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+        .record-result {
+            font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+        }
+        .record-result.success { background: var(--success-bg); color: var(--success); }
+        .record-result.pending { background: var(--surface-3); color: var(--text-2); }
+        .record-result.failed { background: var(--danger-bg); color: var(--danger); }
+
+        .footer-info { text-align: center; padding: 20px; font-size: 10px; color: var(--text-3); }
+
+        /* ===== Tab Bar ===== */
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            display: flex;
+            border-top: 1px solid var(--border);
+            padding-bottom: env(safe-area-inset-bottom);
+            z-index: 2000;
+        }
+        .tab-item {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; padding: 8px 0 6px;
+            cursor: pointer; transition: all 0.2s ease; gap: 2px;
+        }
+        .tab-icon { font-size: 20px; line-height: 1; transition: transform 0.2s; }
+        .tab-item:active .tab-icon { transform: scale(0.85); }
+        .tab-text { font-size: 10px; font-weight: 600; letter-spacing: -0.01em; }
+        .tab-item.active .tab-icon, .tab-item.active .tab-text { color: var(--accent); }
+        .tab-item:not(.active) .tab-icon, .tab-item:not(.active) .tab-text { color: var(--text-3); }
+
+        /* ===== Modal ===== */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 3000;
+            align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+        .modal {
+            background: var(--surface); border-radius: var(--radius-xl);
+            width: 100%; max-width: 360px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalIn { from { transform: scale(0.92) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .modal-header {
+            padding: 22px; text-align: center;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; letter-spacing: -0.01em; }
+        .modal-subtitle { font-size: 12px; color: var(--text-2); }
+        .success-modal .modal-header { background: var(--success-light); }
+        .success-icon {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--success); color: white; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 24px; font-weight: 700;
+            margin: 0 auto 10px;
+            box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+        }
+        .modal-body { padding: 20px; }
+        .info-row {
+            display: flex; justify-content: space-between;
+            padding: 9px 0; border-bottom: 1px solid var(--border);
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-size: 12px; color: var(--text-2); }
+        .info-value { font-size: 13px; font-weight: 700; color: var(--text); }
+        .confirm-btn {
+            width: 100%; padding: 13px;
+            background: var(--text); color: white; border: none; border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s ease; letter-spacing: -0.01em;
+        }
+        .confirm-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+        /* ===== Loading ===== */
+        .loading {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px;
+        }
+        .loading-spinner {
+            width: 30px; height: 30px;
+            border: 2.5px solid var(--border-strong);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading span, .loading div { color: var(--text-3); font-size: 12px; }
+
+        .user-menu-modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4); z-index: 4000;
+            display: flex; align-items: flex-start; justify-content: flex-start;
+            padding: 60px 12px 0;
+        }
+        .user-menu-modal.show { display: flex; }
+        .user-menu-modal:not(.show) { display: none; }
+        .user-menu-panel {
+            background: white; border-radius: 16px;
+            width: 100%; max-width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .user-menu-header {
+            padding: 20px 16px 16px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            color: white;
+        }
+        .user-menu-avatar-row {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .user-menu-avatar {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 700; color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .user-menu-name { font-size: 17px; font-weight: 700; }
+        .user-menu-subtitle { font-size: 11px; opacity: 0.8; margin-top: 3px; }
+        .user-menu-list { padding: 8px 0; }
+        .user-menu-item {
+            display: flex; align-items: center; padding: 13px 16px;
+            cursor: pointer; transition: background 0.15s;
+            font-size: 14px; color: var(--text);
+        }
+        .user-menu-item:active { background: var(--surface-2); }
+        .user-menu-item-icon { width: 20px; margin-right: 12px; font-size: 16px; }
+        .user-menu-item-arrow { margin-left: auto; color: var(--text-3); font-size: 12px; }
+        .user-menu-divider { height: 1px; background: var(--border); margin: 4px 16px; }
+        .user-menu-item.danger { color: var(--danger); }
+
+        .edit-form-group { padding: 16px; }
+        .edit-form-label { font-size: 12px; color: var(--text-3); font-weight: 600; margin-bottom: 6px; }
+        .edit-form-input {
+            width: 100%; padding: 11px 12px;
+            border: 1px solid var(--border); border-radius: 10px;
+            font-size: 14px; color: var(--text);
+            box-sizing: border-box; outline: none;
+            transition: border-color 0.15s;
+        }
+        .edit-form-input:focus { border-color: var(--accent); }
+        .edit-form-actions {
+            padding: 0 16px 16px; display: flex; gap: 10px;
+        }
+        .edit-form-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .edit-form-btn.primary { background: var(--accent); color: white; }
+        .edit-form-btn.primary:active { opacity: 0.85; }
+        .edit-form-btn.secondary { background: var(--surface-2); color: var(--text-2); }
+        .avatar-selector {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 10px; padding: 16px;
+        }
+        .avatar-option {
+            aspect-ratio: 1; border-radius: 50%;
+            background: var(--surface-2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 700; cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .avatar-option.selected {
+            border-color: var(--accent);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .vip-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 10px; font-weight: 700; margin-left: 6px;
+            background: linear-gradient(135deg, #f59e0b, #f97316); color: white;
+        }
+        .vip-modal-body { padding: 0; }
+        .vip-hero {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%);
+            color: white; padding: 28px 20px; text-align: center;
+        }
+        .vip-hero-icon { font-size: 40px; margin-bottom: 8px; }
+        .vip-hero-title { font-size: 22px; font-weight: 800; }
+        .vip-hero-price { font-size: 14px; opacity: 0.85; margin-top: 6px; }
+        .vip-hero-price strong { font-size: 28px; font-weight: 800; }
+        .vip-benefits { padding: 20px 16px; }
+        .vip-benefit-item {
+            display: flex; align-items: flex-start; padding: 10px 0; gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .vip-benefit-item:last-child { border-bottom: none; }
+        .vip-benefit-icon {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: rgba(37, 99, 235, 0.1); color: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; flex-shrink: 0;
+        }
+        .vip-benefit-text { flex: 1; }
+        .vip-benefit-title { font-size: 13px; font-weight: 600; color: var(--text); }
+        .vip-benefit-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+        .vip-pay-section { padding: 16px; border-top: 1px solid var(--border); }
+        .vip-pay-label { font-size: 12px; color: var(--text-3); font-weight: 600; margin-bottom: 10px; }
+        .vip-pay-methods { display: flex; gap: 10px; }
+        .vip-pay-method {
+            flex: 1; padding: 12px; border: 2px solid var(--border); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+            color: var(--text-2);
+        }
+        .vip-pay-method.selected { border-color: var(--accent); background: rgba(37,99,235,0.05); color: var(--accent); }
+        .vip-pay-method:active { transform: scale(0.97); }
+        .vip-pay-btn {
+            width: 100%; padding: 14px; margin-top: 14px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed); color: white;
+            border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .vip-pay-btn:active { transform: scale(0.97); opacity: 0.9; }
+        .vip-status-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; background: rgba(245, 158, 11, 0.06);
+            border-bottom: 1px solid var(--border);
+        }
+        .vip-status-left { display: flex; align-items: center; gap: 8px; }
+        .vip-status-text { font-size: 13px; font-weight: 600; color: var(--text); }
+        .vip-status-sub { font-size: 11px; color: var(--text-3); }
+        .vip-follow-count {
+            font-size: 11px; color: var(--text-3); margin-top: 2px;
+        }
+        .admin-entry {
+            margin: 16px 12px 0; padding: 14px 16px;
+            background: var(--surface); border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .admin-entry:active { background: var(--surface-2); }
+        .admin-entry-left { display: flex; align-items: center; gap: 10px; }
+        .admin-entry-icon { font-size: 18px; }
+        .admin-entry-text { font-size: 13px; font-weight: 600; color: var(--text); }
+        .admin-entry-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+        .admin-entry-arrow { font-size: 14px; color: var(--text-3); }
+
+        .admin-modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 5000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .admin-modal:not(.show) { display: none; }
+        .admin-panel {
+            background: white; border-radius: 16px;
+            width: 95%; max-width: 420px; max-height: 85vh;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .admin-header {
+            padding: 16px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #1e3a5f, #2563eb);
+            color: white;
+        }
+        .admin-title { font-size: 16px; font-weight: 700; }
+        .admin-close { font-size: 20px; cursor: pointer; line-height: 1; }
+        .admin-tabs {
+            display: flex; border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+        .admin-tab {
+            flex: 1; padding: 12px; text-align: center;
+            font-size: 13px; font-weight: 600; color: var(--text-2);
+            cursor: pointer; transition: all 0.15s;
+        }
+        .admin-tab.active {
+            background: white; color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+        }
+        .admin-body {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 12px;
+        }
+        .admin-match-item {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 12px; margin-bottom: 10px;
+        }
+        .admin-match-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px;
+        }
+        .admin-match-league {
+            font-size: 11px; font-weight: 600; color: var(--accent);
+            background: rgba(37,99,235,0.1); padding: 3px 8px; border-radius: 6px;
+        }
+        .admin-match-delete {
+            font-size: 12px; color: var(--danger); cursor: pointer; font-weight: 600;
+        }
+        .admin-match-row {
+            display: flex; gap: 6px; margin-bottom: 6px;
+        }
+        .admin-match-row:last-child { margin-bottom: 0; }
+        .admin-input {
+            flex: 1; padding: 7px 8px;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 12px; color: var(--text);
+            outline: none; box-sizing: border-box;
+        }
+        .admin-input:focus { border-color: var(--accent); }
+        .admin-input.w50 { flex: 0 0 50%; }
+        .admin-input.w33 { flex: 0 0 calc(33.33% - 4px); }
+        .admin-label {
+            font-size: 10px; color: var(--text-3); font-weight: 600;
+            margin-bottom: 3px; display: block;
+        }
+        .admin-add-btn {
+            width: 100%; padding: 12px; border: 1.5px dashed var(--border);
+            border-radius: 12px; background: transparent;
+            font-size: 13px; color: var(--text-2); font-weight: 600;
+            cursor: pointer; margin-bottom: 10px;
+        }
+        .admin-add-btn:active { background: var(--surface-2); }
+        .admin-playtype-tabs {
+            display: flex; gap: 4px; margin: 8px 0 10px;
+            background: var(--surface-2); padding: 3px; border-radius: 8px;
+        }
+        .admin-playtype-tab {
+            flex: 1; padding: 6px 0; text-align: center;
+            font-size: 11px; font-weight: 600; color: var(--text-2);
+            border-radius: 6px; cursor: pointer; transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .admin-playtype-tab.active {
+            background: white; color: var(--accent);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .admin-playtype-body { display: none; }
+        .admin-playtype-body.active { display: block; }
+        .admin-odds-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+        }
+        .admin-odds-grid.score-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        .admin-odds-item {
+            display: flex; flex-direction: column; align-items: center;
+            background: var(--surface-2); border-radius: 8px; padding: 6px 4px;
+        }
+        .admin-odds-label {
+            font-size: 10px; color: var(--text-3); font-weight: 600; margin-bottom: 3px;
+        }
+        .admin-odds-input {
+            width: 100%; text-align: center;
+            border: none; background: transparent;
+            font-size: 12px; font-weight: 600; color: var(--text);
+            outline: none; padding: 0;
+        }
+        .admin-handicap-row {
+            display: flex; gap: 6px; margin-bottom: 8px; align-items: center;
+        }
+        .admin-handicap-select {
+            padding: 6px 8px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 12px;
+            outline: none; background: white;
+        }
+        .admin-save-bar {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            display: flex; gap: 10px;
+        }
+        .admin-save-btn {
+            flex: 1; padding: 13px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white; transition: all 0.15s;
+        }
+        .admin-save-btn:active { transform: scale(0.97); opacity: 0.9; }
+        .admin-save-btn.secondary {
+            background: var(--surface-2); color: var(--text-2);
+        }
+        .admin-import-area {
+            width: 100%; min-height: 200px;
+            padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+            font-size: 12px; line-height: 1.6; font-family: monospace;
+            resize: vertical; box-sizing: border-box;
+            outline: none;
+        }
+        .admin-import-area:focus { border-color: var(--accent); }
+        .admin-import-hint {
+            font-size: 11px; color: var(--text-3); line-height: 1.5;
+            margin-bottom: 10px; background: var(--surface-2);
+            padding: 10px; border-radius: 8px;
+        }
+        .admin-import-hint code {
+            background: rgba(37,99,235,0.1); color: var(--accent);
+            padding: 2px 5px; border-radius: 4px; font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="avatar" id="headerAvatar">球</div>
+            <div class="user-info">
+                <div class="user-name" id="headerUsername">懂球帝</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="user-title" onclick="openUserMenu()" style="cursor:pointer;color:var(--accent);">个人中心 ›</div>
+                    <button class="vip-entry-btn" id="vipEntryBtn" onclick="showVipModal()">👑 开通会员</button>
+                </div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="points-label">推演积分</div>
+            <div class="points-value" id="pointsDisplay">200,000</div>
+            <div class="energy-bar-wrap">
+                <div class="energy-bar">
+                    <div class="energy-bar-fill" id="energyBarFill" style="width:100%;background:#22c55e;"></div>
+                </div>
+                <div class="energy-bar-tip"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div id="homePage" class="tab-content active">
+            <div class="home-section">
+                <div id="featuredMatches"></div>
+                <div class="ranking-mini-card">
+                    <div class="ranking-mini-header">
+                        <div class="ranking-mini-title">精英榜单缩影</div>
+                        <div class="view-all" onclick="switchTab('ranking')">查看完整榜单</div>
+                    </div>
+                    <div class="ranking-mini-list" id="miniRanking"></div>
+                </div>
+                <div class="article-card">
+                    <div class="article-title">【量化复盘】本周热门赛事数据解析与推演策略</div>
+                    <div class="article-summary">基于历史数据和机器学习模型，深度分析本周焦点赛事的胜负走势，为您提供科学的推演参考...</div>
+                    <div class="article-meta">发布于 2小时前 · 阅读 1.2k</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="matchPage" class="tab-content">
+            <div class="match-section">
+                <div class="section-title">模拟赛场</div>
+                <div class="play-tabs" id="playTabs">
+                    <div class="play-tab active" onclick="switchPlayType('spf')">胜平负</div>
+                    <div class="play-tab" onclick="switchPlayType('rspf')">让球胜平负</div>
+                    <div class="play-tab" onclick="switchPlayType('score')">比分</div>
+                    <div class="play-tab" onclick="switchPlayType('total_goals')">总进球数</div>
+                    <div class="play-tab" onclick="switchPlayType('half_full')">半全场</div>
+                </div>
+                <div id="matchList" class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="rankingPage" class="tab-content">
+            <div class="ranking-section">
+                <div class="section-title">精英榜单</div>
+                <div class="ranking-tabs">
+                    <div class="ranking-tab active" onclick="switchRankingType('week')">周榜</div>
+                    <div class="ranking-tab" onclick="switchRankingType('total')">总榜</div>
+                </div>
+                <div id="rankingList"></div>
+            </div>
+        </div>
+
+        <div id="profilePage" class="tab-content">
+            <div class="profile-section">
+                <div class="profile-card">
+                    <div id="profileHeader"></div>
+                    <div id="profileStats"></div>
+                </div>
+                <div class="profile-card">
+                    <div id="profileFundsChart"></div>
+                </div>
+                <div class="record-card">
+                    <div class="record-header">
+                        <div class="record-title">我的推演记录</div>
+                        <div class="view-all" onclick="showAllBetHistory('profile')">更多</div>
+                    </div>
+                    <div class="bet-history-list" id="profileBetHistory" style="padding:0;"></div>
+                </div>
+                <div class="record-card">
+                    <div class="record-header">
+                        <div class="record-title">破产记录</div>
+                        <div class="record-title" style="font-size:12px;color:var(--text-3);font-weight:500;" id="bankruptcyCount">共 0 次</div>
+                    </div>
+                    <div id="bankruptcyList" class="bankruptcy-list" style="padding-top:4px;"></div>
+                </div>
+                <div class="footer-info">
+                    <div>数据服务协议</div>
+                    <div style="margin-top: 4px;">版本 v1.0.0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="betSlipBar" class="bet-slip-bar">
+        <div class="bet-slip-bar-row">
+            <div class="bet-slip-info">
+                <div class="bet-slip-count" id="betSlipCount">已选 0 个方案</div>
+                <div class="bet-slip-detail" id="betSlipDetail">消耗 0 积分 · 预计回报 0 积分</div>
+            </div>
+            <button class="bet-slip-btn" id="betSlipBtn" onclick="openBetSlipModal()" disabled>去推演</button>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('home')">
+            <div class="tab-icon">🏠</div>
+            <div class="tab-text">首页</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('match')">
+            <div class="tab-icon">⚽</div>
+            <div class="tab-text">模拟赛场</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('ranking')">
+            <div class="tab-icon">🏆</div>
+            <div class="tab-text">精英榜单</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('profile')">
+            <div class="tab-icon">👤</div>
+            <div class="tab-text">我的数据</div>
+        </div>
+    </div>
+
+    <div id="betSlipModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="betSlipModalTitle">推演方案篮</div>
+                <div class="modal-subtitle" id="betSlipModalSubtitle">确认您的模拟推演方案</div>
+            </div>
+            <div class="modal-body">
+                <div class="bet-slip-list" id="betSlipModalList"></div>
+                <div class="multiplier-row">
+                    <span class="multiplier-label">倍数</span>
+                    <div class="multiplier-control">
+                        <button class="multiplier-btn" onclick="changeMultiplier(-1)">−</button>
+                        <input type="number" class="multiplier-input" id="multiplierInput" value="1" min="1" onchange="onMultiplierChange()">
+                        <button class="multiplier-btn" onclick="changeMultiplier(1)">+</button>
+                    </div>
+                    <div class="multiplier-quick">
+                        <button class="multiplier-quick-btn" onclick="setMultiplier(5)">5倍</button>
+                        <button class="multiplier-quick-btn" onclick="setMultiplier(10)">10倍</button>
+                        <button class="multiplier-quick-btn" onclick="setMultiplier(50)">50倍</button>
+                    </div>
+                </div>
+                <div class="modal-info">
+                    <div class="info-row">
+                        <span class="info-label">玩法类型</span>
+                        <span class="info-value" id="betSlipType"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">注数</span>
+                        <span class="info-value" id="betSlipBets">1 注</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">综合指数</span>
+                        <span class="info-value" id="betSlipOdds">0.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">总消耗积分</span>
+                        <span class="info-value" id="betSlipCost">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">预计最高回报</span>
+                        <span class="info-value" id="betSlipReturn" style="color: #3b82f6; font-weight: 600;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 0 20px 20px;">
+                <button class="confirm-btn" onclick="confirmBetSlip()">确认模拟推演</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal-overlay">
+        <div class="modal success-modal">
+            <div class="modal-header">
+                <div class="success-icon">✓</div>
+                <div class="modal-title">推演成功</div>
+                <div class="modal-subtitle">系统已记录您的支持方案</div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-info">
+                    <div class="info-row">
+                        <span class="info-label">方案编码</span>
+                        <span class="info-value" id="successCode"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">消耗积分</span>
+                        <span class="info-value" id="successAmount"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">预计最高回报</span>
+                        <span class="info-value" id="successReturn"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">剩余积分</span>
+                        <span class="info-value" id="successRemaining"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 0 20px 20px;">
+                <button class="confirm-btn" onclick="closeSuccessModal()">继续推演</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 玩家详情弹窗 -->
+    <div id="playerModal" class="modal-overlay" onclick="if(event.target===this)closePlayerModal()">
+        <div class="modal player-modal">
+            <div id="playerModalContent"></div>
+            <div class="player-modal-footer" id="playerModalFooter"></div>
+        </div>
+    </div>
+
+    <!-- 跟投成功提示 -->
+    <div id="followToast" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('show')" style="z-index:3500;">
+        <div class="modal" style="max-width:300px;">
+            <div class="modal-header success-modal" style="background:var(--success-light);">
+                <div class="success-icon">✓</div>
+                <div class="modal-title">跟投设置成功</div>
+                <div class="modal-subtitle" id="followToastMsg">将在该玩家下注时通知您</div>
+            </div>
+            <div class="modal-footer" style="padding:0 20px 20px;">
+                <button class="confirm-btn" onclick="document.getElementById('followToast').classList.remove('show')">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 破产清算弹窗 -->
+    <div id="bankruptcyModal" class="modal-overlay" style="z-index:3600;">
+        <div class="modal" style="max-width:320px;">
+            <div class="modal-header" style="background:var(--danger-bg);">
+                <div class="modal-title" style="color:var(--danger);">破产清算</div>
+                <div class="modal-subtitle">您的推演积分已低于10,000</div>
+            </div>
+            <div style="padding:20px;">
+                <p style="font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:16px;">
+                    由于积分过低，您已触发破产清算机制。<br>
+                    本次破产记录将<span style="color:var(--danger);font-weight:600;">永久保留</span>在您的个人资料中，所有玩家可见。<br><br>
+                    您可以重新领取 <span style="font-weight:700;color:var(--text);">200,000</span> 推演积分重新开始。
+                </p>
+                <button class="confirm-btn" style="background:var(--accent);" onclick="claimNewPoints()">领取 200,000 积分重新开始</button>
+                <button class="confirm-btn" style="background:transparent;color:var(--text-3);margin-top:8px;" onclick="document.getElementById('bankruptcyModal').classList.remove('show')">暂不领取</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录详情弹窗 -->
+    <div id="betHistoryModal" class="modal-overlay" onclick="if(event.target===this)closeBetHistoryModal()" style="z-index:3800;">
+        <div class="modal" style="max-width:95%;width:360px;">
+            <div style="padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);">
+                <div style="font-size:14px;font-weight:700;">全部推演记录</div>
+                <div onclick="closeBetHistoryModal()" style="font-size:18px;color:var(--text-3);cursor:pointer;line-height:1;">✕</div>
+            </div>
+            <div id="betHistoryModalContent" style="padding:12px 0;max-height:60vh;overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- 用户菜单弹窗 -->
+    <div id="userMenuModal" class="user-menu-modal" onclick="if(event.target===this)closeUserMenu()">
+        <div class="user-menu-panel">
+            <div class="user-menu-header">
+                <div class="user-menu-avatar-row">
+                    <div class="user-menu-avatar" id="userMenuAvatar">球</div>
+                    <div>
+                        <div class="user-menu-name" id="userMenuName">懂球帝</div>
+                        <div class="user-menu-subtitle">ID: DQD001 · 初级分析师</div>
+                    </div>
+                </div>
+            </div>
+            <div class="user-menu-list">
+                <div class="user-menu-item" onclick="showEditNickname()">
+                    <span class="user-menu-item-icon">✏️</span>
+                    <span>修改昵称</span>
+                    <span class="user-menu-item-arrow">›</span>
+                </div>
+                <div class="user-menu-item" onclick="showEditAvatar()">
+                    <span class="user-menu-item-icon">🖼️</span>
+                    <span>修改头像</span>
+                    <span class="user-menu-item-arrow">›</span>
+                </div>
+                <div class="user-menu-item" onclick="showEditPassword()">
+                    <span class="user-menu-item-icon">🔐</span>
+                    <span>修改密码</span>
+                    <span class="user-menu-item-arrow">›</span>
+                </div>
+                <div class="user-menu-divider"></div>
+                <div class="user-menu-item" onclick="showSwitchAccount()">
+                    <span class="user-menu-item-icon">🔄</span>
+                    <span>切换账号</span>
+                    <span class="user-menu-item-arrow">›</span>
+                </div>
+                <div class="user-menu-divider"></div>
+                <div class="user-menu-item" onclick="closeUserMenu();showAdminLogin()">
+                    <span class="user-menu-item-icon">⚙️</span>
+                    <span>管理员入口</span>
+                    <span class="user-menu-item-arrow">›</span>
+                </div>
+                <div class="user-menu-item danger" onclick="logout()">
+                    <span class="user-menu-item-icon">🚪</span>
+                    <span>退出登录</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改昵称弹窗 -->
+    <div id="editNicknameModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('editNicknameModal')" style="z-index:4200;">
+        <div class="modal" style="max-width:90%;width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">修改昵称</div>
+                <div class="modal-close" onclick="closeEditModal('editNicknameModal')">✕</div>
+            </div>
+            <div class="edit-form-group">
+                <div class="edit-form-label">新昵称</div>
+                <input type="text" class="edit-form-input" id="newNicknameInput" placeholder="请输入新昵称" maxlength="12">
+            </div>
+            <div class="edit-form-actions">
+                <button class="edit-form-btn secondary" onclick="closeEditModal('editNicknameModal')">取消</button>
+                <button class="edit-form-btn primary" onclick="saveNickname()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改头像弹窗 -->
+    <div id="editAvatarModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('editAvatarModal')" style="z-index:4200;">
+        <div class="modal" style="max-width:90%;width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">选择头像</div>
+                <div class="modal-close" onclick="closeEditModal('editAvatarModal')">✕</div>
+            </div>
+            <div class="avatar-selector" id="avatarSelector"></div>
+            <div class="edit-form-actions">
+                <button class="edit-form-btn secondary" onclick="closeEditModal('editAvatarModal')">取消</button>
+                <button class="edit-form-btn primary" onclick="saveAvatar()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码弹窗 -->
+    <div id="editPasswordModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('editPasswordModal')" style="z-index:4200;">
+        <div class="modal" style="max-width:90%;width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">修改密码</div>
+                <div class="modal-close" onclick="closeEditModal('editPasswordModal')">✕</div>
+            </div>
+            <div class="edit-form-group">
+                <div class="edit-form-label">原密码</div>
+                <input type="password" class="edit-form-input" id="oldPasswordInput" placeholder="请输入原密码">
+                <div style="height:12px;"></div>
+                <div class="edit-form-label">新密码</div>
+                <input type="password" class="edit-form-input" id="newPasswordInput" placeholder="请输入新密码（6-16位）">
+                <div style="height:12px;"></div>
+                <div class="edit-form-label">确认新密码</div>
+                <input type="password" class="edit-form-input" id="confirmPasswordInput" placeholder="请再次输入新密码">
+            </div>
+            <div class="edit-form-actions">
+                <button class="edit-form-btn secondary" onclick="closeEditModal('editPasswordModal')">取消</button>
+                <button class="edit-form-btn primary" onclick="savePassword()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 切换账号弹窗 -->
+    <div id="switchAccountModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('switchAccountModal')" style="z-index:4200;">
+        <div class="modal" style="max-width:90%;width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">切换账号</div>
+                <div class="modal-close" onclick="closeEditModal('switchAccountModal')">✕</div>
+            </div>
+            <div class="edit-form-group">
+                <div class="edit-form-label">账号</div>
+                <input type="text" class="edit-form-input" id="switchAccountInput" placeholder="请输入账号">
+                <div style="height:12px;"></div>
+                <div class="edit-form-label">密码</div>
+                <input type="password" class="edit-form-input" id="switchPasswordInput" placeholder="请输入密码">
+            </div>
+            <div class="edit-form-actions">
+                <button class="edit-form-btn secondary" onclick="closeEditModal('switchAccountModal')">取消</button>
+                <button class="edit-form-btn primary" onclick="doSwitchAccount()">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会员充值弹窗 -->
+    <div id="vipModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('vipModal')" style="z-index:4200;">
+        <div class="modal" style="max-width:92%;width:340px;">
+            <div class="modal-header">
+                <div class="modal-title">会员中心</div>
+                <div class="modal-close" onclick="closeEditModal('vipModal')">✕</div>
+            </div>
+            <div class="vip-modal-body">
+                <div class="vip-hero">
+                    <div class="vip-hero-icon">👑</div>
+                    <div class="vip-hero-title">量化Pro会员</div>
+                    <div class="vip-hero-price">每月仅需 <strong>¥99</strong> /月</div>
+                </div>
+                <div class="vip-benefits">
+                    <div class="vip-benefit-item">
+                        <div class="vip-benefit-icon">∞</div>
+                        <div class="vip-benefit-text">
+                            <div class="vip-benefit-title">无限跟投</div>
+                            <div class="vip-benefit-desc">免费用户仅可跟投5次，开通会员解锁无限次跟投精英玩家</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="vip-pay-section">
+                    <div class="vip-pay-label">选择支付方式</div>
+                    <div class="vip-pay-methods">
+                        <div class="vip-pay-method selected" id="payWechat" onclick="selectPayMethod('wechat')">
+                            <span>💚</span><span>微信支付</span>
+                        </div>
+                        <div class="vip-pay-method" id="payAlipay" onclick="selectPayMethod('alipay')">
+                            <span>💙</span><span>支付宝</span>
+                        </div>
+                    </div>
+                    <button class="vip-pay-btn" onclick="payVip()">立即开通 ¥99/月</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员登录弹窗 -->
+    <div id="adminLoginModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal('adminLoginModal')" style="z-index:5500;">
+        <div class="modal" style="max-width:85%;width:300px;">
+            <div class="modal-header">
+                <div class="modal-title">管理员验证</div>
+                <div class="modal-close" onclick="closeEditModal('adminLoginModal')">✕</div>
+            </div>
+            <div class="edit-form-group">
+                <div class="edit-form-label">请输入管理员密码</div>
+                <input type="password" class="edit-form-input" id="adminPasswordInput" placeholder="请输入密码">
+            </div>
+            <div class="edit-form-actions">
+                <button class="edit-form-btn secondary" onclick="closeEditModal('adminLoginModal')">取消</button>
+                <button class="edit-form-btn primary" onclick="verifyAdmin()">验证</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员后台弹窗 -->
+    <div id="adminModal" class="admin-modal">
+        <div class="admin-panel">
+            <div class="admin-header">
+                <div class="admin-title">⚙️ 比赛数据管理</div>
+                <div class="admin-close" onclick="closeAdminPanel()">✕</div>
+            </div>
+            <div class="admin-tabs">
+                <div class="admin-tab active" id="adminTabEdit" onclick="switchAdminTab('edit')">手动编辑</div>
+                <div class="admin-tab" id="adminTabImport" onclick="switchAdminTab('import')">批量导入</div>
+            </div>
+            <div class="admin-body" id="adminEditBody"></div>
+            <div class="admin-body" id="adminImportBody" style="display:none;">
+                <div class="admin-import-hint">
+                    <div style="font-weight:600;margin-bottom:6px;color:var(--text);">🤖 智能识别导入（支持任意格式）</div>
+                    直接粘贴比赛信息文字，系统自动识别提取所有数据：<br>
+                    • 胜平负 / 让球胜平负赔率<br>
+                    • 比分完整赔率（含胜其他/平其他/负其他）<br>
+                    • 总进球数赔率<br>
+                    • 半全场胜平负赔率<br>
+                    • 球队名、联赛、开赛时间<br>
+                    <br>
+                    <span style="color:var(--accent);">无需固定格式，粘贴什么都能识别。缺失项会用默认值填充并提示。</span>
+                </div>
+                <textarea class="admin-import-area" id="importTextarea" placeholder="在此粘贴比赛数据..."></textarea>
+            </div>
+            <div class="admin-save-bar">
+                <button class="admin-save-btn secondary" id="adminAddBtn" onclick="addAdminMatch()">+ 添加比赛</button>
+                <button class="admin-save-btn" onclick="saveAdminMatches()">保存并刷新</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.protocol + '//' + window.location.host + '/api';
+        const BASE_UNIT = 20;
+        let userPoints = 200000;
+        let matchDataCache = {};
+        let currentPlayType = 'spf';
+        let betSelections = [];
+        let multiplier = 1;
+
+        const AVATAR_OPTIONS = ['球', '⚽', '🎯', '🔥', '⭐', '💎', '🚀', '🎮', '🎨', '📊'];
+        let currentUser = {
+            username: '懂球帝',
+            avatar: '球',
+            password: '123456',
+            userId: 'DQD001'
+        };
+        let selectedAvatar = '球';
+        const FREE_FOLLOW_LIMIT = 5;
+        let followCount = 0;
+        let isVip = false;
+        let vipExpire = null;
+        let selectedPayMethod = 'wechat';
+
+        function init() {
+            const savedPoints = localStorage.getItem('userPoints');
+            if (savedPoints) userPoints = parseInt(savedPoints);
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) currentUser = JSON.parse(savedUser);
+            const savedFollowCount = localStorage.getItem('followCount');
+            if (savedFollowCount) followCount = parseInt(savedFollowCount);
+            const savedVip = localStorage.getItem('vipExpire');
+            if (savedVip) {
+                vipExpire = new Date(savedVip);
+                if (vipExpire > new Date()) {
+                    isVip = true;
+                } else {
+                    isVip = false;
+                    localStorage.removeItem('vipExpire');
+                }
+            }
+            const savedAdminMatches = localStorage.getItem('adminMatches');
+            if (savedAdminMatches) {
+                const matches = JSON.parse(savedAdminMatches);
+                matches.forEach(m => matchDataCache[m.id] = m);
+            }
+            updatePointsDisplay();
+            updateUserDisplay();
+            updateVipStatus();
+            loadHomeData();
+            if (!savedAdminMatches) {
+                loadMatches();
+            } else {
+                renderMatches(Object.values(matchDataCache));
+            }
+            loadRankings();
+            loadUserProfile();
+        }
+
+        function updateUserDisplay() {
+            document.getElementById('headerUsername').textContent = currentUser.username;
+            document.getElementById('headerAvatar').textContent = currentUser.avatar;
+            document.getElementById('userMenuName').textContent = currentUser.username;
+            document.getElementById('userMenuAvatar').textContent = currentUser.avatar;
+        }
+
+        function saveUser() {
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            updateUserDisplay();
+        }
+
+        function updatePointsDisplay() {
+            document.getElementById('pointsDisplay').textContent = userPoints.toLocaleString();
+            // 能量条逻辑：上限20万，下限0
+            const MAX = 200000;
+            const LOW = 10000;
+            const pct = Math.min(userPoints / MAX, 1) * 100;
+            const fill = document.getElementById('energyBarFill');
+            fill.style.width = pct + '%';
+            // 颜色渐变：低于1万红色，1万~20万之间从红色渐变到绿色
+            if (userPoints <= LOW) {
+                fill.style.background = '#ef4444';
+            } else {
+                const ratio = (userPoints - LOW) / (MAX - LOW);
+                // 从红色(239,68,68)渐变到绿色(34,197,94)
+                const r = Math.round(239 + (34 - 239) * ratio);
+                const g = Math.round(68 + (197 - 68) * ratio);
+                const b = Math.round(68 + (94 - 68) * ratio);
+                fill.style.background = `rgb(${r},${g},${b})`;
+            }
+        }
+
+        function savePoints() {
+            localStorage.setItem('userPoints', userPoints.toString());
+        }
+
+        function getBankruptcyRecords() {
+            return JSON.parse(localStorage.getItem('bankruptcyRecords') || '[]');
+        }
+
+        function addBankruptcyRecord() {
+            const records = getBankruptcyRecords();
+            records.push({ date: new Date().toLocaleDateString('zh-CN'), time: new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) });
+            localStorage.setItem('bankruptcyRecords', JSON.stringify(records));
+        }
+
+        function getLocalBetHistory() {
+            return JSON.parse(localStorage.getItem('localBetHistory') || '[]');
+        }
+
+        function saveLocalBetRecord(betSelections, cost, multiplier) {
+            const records = getLocalBetHistory();
+            const now = new Date();
+            const timeStr = now.toLocaleDateString('zh-CN') + ' ' + now.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+            betSelections.forEach(sel => {
+                const match = Object.values(matchDataCache).find(m => m.id === sel.matchId);
+                const league = match ? match.league : '竞彩足球';
+                records.unshift({
+                    league: league,
+                    match: sel.matchName,
+                    option: sel.optionText,
+                    odds: sel.index,
+                    points: Math.round(cost / betSelections.length),
+                    result: '未开始',
+                    time: timeStr,
+                    status: 'pending'
+                });
+            });
+            localStorage.setItem('localBetHistory', JSON.stringify(records));
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + 'Page').classList.add('active');
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-item')[['home', 'match', 'ranking', 'profile'].indexOf(tab)].classList.add('active');
+        }
+
+        async function loadHomeData() {
+            try {
+                const res = await fetch(`${API_BASE}/get_home_data`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderFeaturedMatches(data.data.featured_matches);
+                    renderMiniRanking(data.data.top_ranking);
+                }
+            } catch (e) {
+                console.error('加载首页数据失败:', e);
+            }
+        }
+
+        function renderFeaturedMatches(matches) {
+            document.getElementById('featuredMatches').innerHTML = matches.map(match => `
+                <div class="featured-card">
+                    <div class="featured-header">
+                        <span class="league-tag">${match.league}</span>
+                        <span class="match-status">${match.status}</span>
+                    </div>
+                    <div class="featured-teams">
+                        <div class="featured-team">
+                            <div class="featured-team-name">${match.home_team}</div>
+                        </div>
+                        <span class="featured-vs">VS</span>
+                        <div class="featured-team">
+                            <div class="featured-team-name">${match.away_team}</div>
+                        </div>
+                    </div>
+                    <div class="featured-time">${match.match_time}</div>
+                    <div class="featured-indices">
+                        <div class="featured-index-item" onclick="toggleSelection(${match.id}, 'spf_home', ${match.indices.home_win}, '胜平负 主胜', '${match.home_team} vs ${match.away_team}'); switchTab('match');">
+                            <div class="featured-index-label">主胜</div>
+                            <div class="featured-index-value">${match.indices.home_win.toFixed(2)}</div>
+                        </div>
+                        <div class="featured-index-item" onclick="toggleSelection(${match.id}, 'spf_draw', ${match.indices.draw}, '胜平负 平局', '${match.home_team} vs ${match.away_team}'); switchTab('match');">
+                            <div class="featured-index-label">平局</div>
+                            <div class="featured-index-value">${match.indices.draw.toFixed(2)}</div>
+                        </div>
+                        <div class="featured-index-item" onclick="toggleSelection(${match.id}, 'spf_away', ${match.indices.away_win}, '胜平负 客胜', '${match.home_team} vs ${match.away_team}'); switchTab('match');">
+                            <div class="featured-index-label">客胜</div>
+                            <div class="featured-index-value">${match.indices.away_win.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="sentiment-bar">
+                        <div class="sentiment-title">社区风向标</div>
+                        <div class="sentiment-chart">
+                            <div class="sentiment-home" style="flex: ${match.sentiment.home_win_percent}"></div>
+                            <div class="sentiment-draw" style="flex: ${match.sentiment.draw_percent}"></div>
+                            <div class="sentiment-away" style="flex: ${match.sentiment.away_win_percent}"></div>
+                        </div>
+                        <div class="sentiment-stats">
+                            <div class="sentiment-item"><span class="sentiment-dot home"></span>${match.sentiment.home_win_percent}%</div>
+                            <div class="sentiment-item"><span class="sentiment-dot draw"></span>${match.sentiment.draw_percent}%</div>
+                            <div class="sentiment-item"><span class="sentiment-dot away"></span>${match.sentiment.away_win_percent}%</div>
+                        </div>
+                    </div>
+                    <button class="go-btn" onclick="switchTab('match')">去模拟赛场支持</button>
+                </div>
+            `).join('');
+        }
+
+        function renderMiniRanking(rankings) {
+            document.getElementById('miniRanking').innerHTML = rankings.map((r, i) => `
+                <div class="ranking-mini-item">
+                    <div class="ranking-mini-rank ${i === 0 ? 'gold' : ''}">${i + 1}</div>
+                    <div class="ranking-mini-name">${r.nickname}</div>
+                    <div class="ranking-mini-rate">${r.win_rate}%</div>
+                </div>
+            `).join('');
+        }
+
+        async function loadMatches() {
+            try {
+                const res = await fetch(`${API_BASE}/get_matches`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    data.data.forEach(m => matchDataCache[m.id] = m);
+                    renderMatches(data.data);
+                }
+            } catch (e) {
+                console.error('加载赛事数据失败:', e);
+            }
+        }
+
+        function renderMatches(matches) {
+            const matchList = document.getElementById('matchList');
+            const playType = currentPlayType;
+
+            matchList.innerHTML = matches.map(match => {
+                if (!match.score_options || Object.keys(match.score_options).length < 30) {
+                    match.score_options = normalizeScoreOptions(match.score_options);
+                }
+                let optionsHtml = '';
+                if (playType === 'spf') {
+                    optionsHtml = `<div class="indices-grid">${['home', 'draw', 'away'].map((t, i) => `
+                        <div class="index-item ${isSelectionActive(match.id, 'spf_' + t) ? 'selected' : ''}" onclick="toggleSelection(${match.id}, 'spf_${t}', ${match.indices[['home_win', 'draw', 'away_win'][i]]}, '胜平负 ${['主胜', '平局', '客胜'][i]}', '${match.home_team} vs ${match.away_team}')">
+                            <div class="index-label">${['主胜', '平局', '客胜'][i]}</div>
+                            <div class="index-value">${match.indices[['home_win', 'draw', 'away_win'][i]].toFixed(2)}</div>
+                        </div>`).join('')}</div>`;
+                } else if (playType === 'rspf') {
+                    optionsHtml = `<div style="text-align:center;margin-bottom:8px;"><span class="handicap-badge">${match.handicap_label}</span></div><div class="indices-grid">${['home', 'draw', 'away'].map((t, i) => `
+                        <div class="index-item ${isSelectionActive(match.id, 'rspf_' + t) ? 'selected' : ''}" onclick="toggleSelection(${match.id}, 'rspf_${t}', ${match.handicap_indices[['home_win', 'draw', 'away_win'][i]]}, '让球胜平负 ${['主胜', '平局', '客胜'][i]}', '${match.home_team} vs ${match.away_team}')">
+                            <div class="index-label">${['主胜', '平局', '客胜'][i]}</div>
+                            <div class="index-value">${match.handicap_indices[['home_win', 'draw', 'away_win'][i]].toFixed(2)}</div>
+                        </div>`).join('')}</div>`;
+                } else if (playType === 'score') {
+                    const scoreLabelMap = {'win_other':'胜其他','draw_other':'平其他','lose_other':'负其他'};
+                    optionsHtml = `<div class="score-grid">${Object.entries(match.score_options).map(([score, odds]) => {
+                        const label = scoreLabelMap[score] || score;
+                        return `
+                        <div class="score-item ${isSelectionActive(match.id, 'score_' + score) ? 'selected' : ''}" onclick="toggleSelection(${match.id}, 'score_${score}', ${odds}, '比分 ${label}', '${match.home_team} vs ${match.away_team}')">
+                            <div class="score-label">${label}</div>
+                            <div class="score-value">${odds.toFixed(2)}</div>
+                        </div>`;
+                    }).join('')}</div>`;
+                } else if (playType === 'total_goals') {
+                    optionsHtml = `<div class="goals-grid">${Object.entries(match.total_goals).map(([goals, odds]) => `
+                        <div class="goal-item ${isSelectionActive(match.id, 'goals_' + goals) ? 'selected' : ''}" onclick="toggleSelection(${match.id}, 'goals_${goals}', ${odds}, '总进球 ${goals}', '${match.home_team} vs ${match.away_team}')">
+                            <div class="goal-label">${goals}</div>
+                            <div class="goal-value">${odds.toFixed(2)}</div>
+                        </div>`).join('')}</div>`;
+                } else if (playType === 'half_full') {
+                    const htftLabels = {'home_home':'胜/胜','home_draw':'胜/平','home_away':'胜/负','draw_home':'平/胜','draw_draw':'平/平','draw_away':'平/负','away_home':'负/胜','away_draw':'负/平','away_away':'负/负'};
+                    optionsHtml = `<div class="htft-grid">${Object.entries(match.half_time_full_time).map(([key, odds]) => `
+                        <div class="htft-item ${isSelectionActive(match.id, 'htft_' + key) ? 'selected' : ''}" onclick="toggleSelection(${match.id}, 'htft_${key}', ${odds}, '半全场 ${htftLabels[key]}', '${match.home_team} vs ${match.away_team}')">
+                            <div class="htft-label">${htftLabels[key]}</div>
+                            <div class="htft-value">${odds.toFixed(2)}</div>
+                        </div>`).join('')}</div>`;
+                }
+                return `<div class="match-card">
+                    <div class="match-header">
+                        <span class="league-tag">${match.league}</span>
+                        <span class="match-status">${match.status}</span>
+                    </div>
+                    <div class="match-teams">
+                        <div class="team">
+                            <span class="team-name">${match.home_team}</span>
+                        </div>
+                        <span class="vs">VS</span>
+                        <div class="team">
+                            <span class="team-name">${match.away_team}</span>
+                        </div>
+                    </div>
+                    <div class="match-time">${match.match_time}</div>
+                    ${optionsHtml}
+                </div>`;
+            }).join('');
+        }
+
+        function switchPlayType(type) {
+            currentPlayType = type;
+            document.querySelectorAll('.play-tab').forEach(t => t.classList.remove('active'));
+            const tabMap = {'spf': 0, 'rspf': 1, 'score': 2, 'total_goals': 3, 'half_full': 4};
+            document.querySelectorAll('.play-tab')[tabMap[type]].classList.add('active');
+            if (Object.keys(matchDataCache).length > 0) renderMatches(Object.values(matchDataCache));
+        }
+
+        function isSelectionActive(matchId, optionKey) {
+            return betSelections.some(s => s.matchId === matchId && s.optionKey === optionKey);
+        }
+
+        function toggleSelection(matchId, optionKey, index, optionText, matchName) {
+            const existing = betSelections.findIndex(s => s.matchId === matchId);
+            if (existing >= 0) {
+                if (betSelections[existing].optionKey === optionKey) {
+                    betSelections.splice(existing, 1);
+                } else {
+                    betSelections[existing].optionKey = optionKey;
+                    betSelections[existing].index = index;
+                    betSelections[existing].optionText = optionText;
+                }
+            } else {
+                betSelections.push({ matchId, optionKey, index, optionText, matchName });
+            }
+            updateBetSlipBar();
+            if (Object.keys(matchDataCache).length > 0) renderMatches(Object.values(matchDataCache));
+        }
+
+        function removeSelection(matchId) {
+            betSelections = betSelections.filter(s => s.matchId !== matchId);
+            updateBetSlipBar();
+            if (Object.keys(matchDataCache).length > 0) renderMatches(Object.values(matchDataCache));
+            if (betSelections.length === 0) document.getElementById('betSlipModal').classList.remove('show');
+        }
+
+        function calculateBet() {
+            const count = betSelections.length;
+            if (count === 0) return { count: 0, totalOdds: 0, cost: 0, maxReturn: 0, type: '' };
+            let totalOdds = 1;
+            betSelections.forEach(s => totalOdds *= s.index);
+            const cost = BASE_UNIT * multiplier;
+            const maxReturn = Math.round(BASE_UNIT * totalOdds * multiplier);
+            const type = count === 1 ? '单关' : `${count}串1`;
+            return { count, totalOdds, cost, maxReturn, type };
+        }
+
+        function updateBetSlipBar() {
+            const bet = calculateBet();
+            const bar = document.getElementById('betSlipBar');
+            const mainContent = document.querySelector('.main-content');
+            if (bet.count > 0) {
+                bar.classList.add('show');
+                mainContent.classList.add('has-bet-slip');
+                document.getElementById('betSlipCount').textContent = `已选 ${bet.count} 个方案 · ${bet.type}`;
+                document.getElementById('betSlipDetail').textContent = `消耗 ${bet.cost.toLocaleString()} 积分 · 预计回报 ${bet.maxReturn.toLocaleString()} 积分`;
+                document.getElementById('betSlipBtn').disabled = false;
+            } else {
+                bar.classList.remove('show');
+                mainContent.classList.remove('has-bet-slip');
+            }
+        }
+
+        function openBetSlipModal() {
+            if (betSelections.length === 0) return;
+            const bet = calculateBet();
+            document.getElementById('betSlipModalList').innerHTML = betSelections.map((s, i) => `
+                <div class="bet-slip-item">
+                    <div class="bet-slip-item-info">
+                        <div class="bet-slip-item-match">${i + 1}. ${s.matchName}</div>
+                        <div class="bet-slip-item-option">${s.optionText} · 指数 ${s.index.toFixed(2)}</div>
+                    </div>
+                    <button class="bet-slip-item-remove" onclick="removeSelection(${s.matchId});">×</button>
+                </div>`).join('');
+            document.getElementById('betSlipModalTitle').textContent = bet.count === 1 ? '单关推演确认' : `${bet.count}串1 串关推演确认`;
+            document.getElementById('betSlipModalSubtitle').textContent = `共 ${bet.count} 个方案，${multiplier} 倍`;
+            document.getElementById('betSlipType').textContent = bet.type;
+            document.getElementById('betSlipBets').textContent = `1 注 × ${multiplier} 倍`;
+            document.getElementById('betSlipOdds').textContent = bet.totalOdds.toFixed(2);
+            document.getElementById('betSlipCost').textContent = bet.cost.toLocaleString();
+            document.getElementById('betSlipReturn').textContent = bet.maxReturn.toLocaleString();
+            document.getElementById('multiplierInput').value = multiplier;
+            document.getElementById('betSlipModal').classList.add('show');
+        }
+
+        function changeMultiplier(delta) {
+            multiplier = Math.max(1, multiplier + delta);
+            document.getElementById('multiplierInput').value = multiplier;
+            refreshBetSlipModal();
+        }
+
+        function setMultiplier(val) {
+            multiplier = val;
+            document.getElementById('multiplierInput').value = multiplier;
+            refreshBetSlipModal();
+        }
+
+        function onMultiplierChange() {
+            const val = parseInt(document.getElementById('multiplierInput').value);
+            multiplier = isNaN(val) || val < 1 ? 1 : val;
+            document.getElementById('multiplierInput').value = multiplier;
+            refreshBetSlipModal();
+        }
+
+        function refreshBetSlipModal() {
+            const bet = calculateBet();
+            document.getElementById('betSlipModalSubtitle').textContent = `共 ${bet.count} 个方案，${multiplier} 倍`;
+            document.getElementById('betSlipBets').textContent = `1 注 × ${multiplier} 倍`;
+            document.getElementById('betSlipCost').textContent = bet.cost.toLocaleString();
+            document.getElementById('betSlipReturn').textContent = bet.maxReturn.toLocaleString();
+            updateBetSlipBar();
+        }
+
+        function confirmBetSlip() {
+            const bet = calculateBet();
+            if (userPoints < bet.cost) {
+                alert(`推演积分不足！当前积分 ${userPoints.toLocaleString()}，需要 ${bet.cost.toLocaleString()}`);
+                return;
+            }
+            userPoints -= bet.cost;
+            savePoints();
+            updatePointsDisplay();
+            // 破产检测：低于1万时提示破产清算
+            if (userPoints < 10000) {
+                addBankruptcyRecord();
+                setTimeout(() => showBankruptcyModal(), 1500);
+            }
+            const code = 'QS-' + Date.now().toString(36).toUpperCase();
+            document.getElementById('betSlipModal').classList.remove('show');
+            document.getElementById('successCode').textContent = code;
+            document.getElementById('successAmount').textContent = bet.cost.toLocaleString();
+            document.getElementById('successReturn').textContent = bet.maxReturn.toLocaleString();
+            document.getElementById('successRemaining').textContent = userPoints.toLocaleString();
+            document.getElementById('successModal').classList.add('show');
+            betSelections = [];
+            multiplier = 1;
+            updateBetSlipBar();
+            if (Object.keys(matchDataCache).length > 0) renderMatches(Object.values(matchDataCache));
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('show');
+        }
+
+        function showBankruptcyModal() {
+            document.getElementById('bankruptcyModal').classList.add('show');
+        }
+
+        function claimNewPoints() {
+            userPoints = 200000;
+            savePoints();
+            updatePointsDisplay();
+            document.getElementById('bankruptcyModal').classList.remove('show');
+            loadUserProfile(); // 刷新个人中心破产记录
+        }
+
+        let currentRankingType = 'week';
+        let rankingDataCache = {};
+        let followedPlayers = new Set(JSON.parse(localStorage.getItem('followedPlayers') || '[]'));
+
+        async function loadRankings() {
+            try {
+                const res = await fetch(`${API_BASE}/get_rankings?type=week`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    rankingDataCache.week = data.data;
+                    renderRankings('week');
+                }
+            } catch (e) {
+                console.error('加载排行榜数据失败:', e);
+            }
+        }
+
+        async function switchRankingType(type) {
+            currentRankingType = type;
+            document.querySelectorAll('.ranking-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.ranking-tab')[type === 'week' ? 0 : 1].classList.add('active');
+            if (!rankingDataCache[type]) {
+                try {
+                    const res = await fetch(`${API_BASE}/get_rankings?type=${type}`);
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        rankingDataCache[type] = data.data;
+                    }
+                } catch (e) {
+                    console.error('加载榜单失败:', e);
+                    return;
+                }
+            }
+            renderRankings(type);
+        }
+
+        function renderRankings(type) {
+            const list = document.getElementById('rankingList');
+            const data = rankingDataCache[type];
+            if (!data) return;
+            const sorted = [...data].sort((a, b) => (b.roi || b.growth_rate || 0) - (a.roi || a.growth_rate || 0));
+            list.innerHTML = `<div class="ranking-card">
+                <div class="ranking-header">
+                    <span>排名</span><span>分析师</span><span>增长率</span>
+                </div>
+                ${sorted.map((r, i) => {
+                    const isFollowing = followedPlayers.has(r.user_id);
+                    const growth = r.roi !== undefined ? r.roi : (r.growth_rate || 0);
+                    return `<div class="ranking-row">
+                        <div class="rank-number ${i < 3 ? 'top-three' : ''}">${i + 1}</div>
+                        <div class="rank-avatar">${r.nickname.charAt(0)}</div>
+                        <div class="rank-info">
+                            <div class="rank-name">${r.nickname}</div>
+                            <div class="rank-team">${r.title || '量化分析师'}</div>
+                        </div>
+                        <div class="rank-rate" style="color:var(--success);">+${growth}%</div>
+                        <div class="rank-actions">
+                            <div class="rank-btn rank-btn-info" onclick="showPlayerDetail('${r.user_id}')">查看信息</div>
+                            <div class="rank-btn rank-btn-follow ${isFollowing ? 'following' : ''}" id="followBtn_${r.user_id}" onclick="toggleFollow('${r.user_id}', '${r.nickname}')">${isFollowing ? '已跟投' : '跟投'}</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        async function showPlayerDetail(userId) {
+            const modal = document.getElementById('playerModal');
+            const content = document.getElementById('playerModalContent');
+            content.innerHTML = `<div style="padding:60px;text-align:center;"><div class="loading-spinner"></div><div>加载中...</div></div>`;
+            modal.classList.add('show');
+            try {
+                const res = await fetch(`${API_BASE}/get_player_detail?user_id=${userId}`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const d = data.data;
+                    const isFollowing = followedPlayers.has(userId);
+                    const fundsStr = (d.current_funds / 10000).toFixed(1) + '万';
+                    const growthColor = d.growth_rate > 0 ? 'var(--success)' : 'var(--danger)';
+                    playerBetHistoryData = d.bet_history || [];
+
+                    content.innerHTML = `
+                        <div class="player-modal-header">
+                            <div class="player-avatar-lg">${d.avatar}</div>
+                            <div class="player-name-lg">${d.nickname}</div>
+                            <div class="player-title-lg">Lv.${d.level} ${d.title}</div>
+                        </div>
+                        <div class="player-stats-row">
+                            <div class="player-stat">
+                                <div class="player-stat-value" style="color:${growthColor}">+${d.growth_rate}%</div>
+                                <div class="player-stat-label">资金增长率</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${fundsStr}</div>
+                                <div class="player-stat-label">当前资金</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${d.stats.total_predictions}</div>
+                                <div class="player-stat-label">总推演场次</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${d.stats.win_rate}%</div>
+                                <div class="player-stat-label">胜率</div>
+                            </div>
+                        </div>
+                        <div class="funds-chart-container">
+                            ${renderFundsKLineSVG(d.funds_curve, d.initial_funds, d.stats)}
+                        </div>
+                        <div class="player-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>历史推演记录</span>
+                            <span class="view-all" onclick="showAllBetHistory('player')" style="font-size:12px;">更多</span>
+                        </div>
+                        <div class="bet-history-list">
+                            ${(d.bet_history || []).slice(0, 4).map(b => {
+                                let rc = 'lose';
+                                if (b.result === '赢' || b.result === '胜') rc = 'win';
+                                else if (b.result === '未开始' || b.status === 'pending') rc = 'pending';
+                                return `
+                                <div class="bet-history-item">
+                                    <div class="bet-history-league">${b.league}</div>
+                                    <div class="bet-history-info">
+                                        <div class="bet-history-match">${b.match}</div>
+                                        <div class="bet-history-detail">${b.option} @ ${b.odds} · ${b.points}积分 · ${b.time}</div>
+                                    </div>
+                                    <div class="bet-history-result ${rc}">${b.result}</div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                        <div class="player-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>破产记录</span>
+                            <span style="font-size:11px;color:var(--text-3);font-weight:500;">共 ${(d.bankruptcy_records || []).length} 次</span>
+                        </div>
+                        <div class="bet-history-list">
+                            ${(d.bankruptcy_records || []).length === 0
+                                ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--text-3);">暂无破产记录</div>'
+                                : d.bankruptcy_records.map((r, i) => `
+                                    <div class="bet-history-item">
+                                        <div class="bet-history-league" style="background:var(--danger-bg);color:var(--danger);">第${i+1}次</div>
+                                        <div class="bet-history-info">
+                                            <div class="bet-history-match">破产清算</div>
+                                            <div class="bet-history-detail">${r.date} ${r.time}</div>
+                                        </div>
+                                        <div class="bet-history-result lose">破产</div>
+                                    </div>
+                                `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('playerModalFooter').innerHTML = `
+                        <button class="player-follow-btn ${isFollowing ? 'following' : ''}" id="playerFollowBtn" onclick="toggleFollow('${userId}', '${d.nickname}', true)">
+                            ${isFollowing ? '已跟投 - 点击取消' : '跟投此玩家'}
+                        </button>
+                    `;
+                }
+            } catch (e) {
+                content.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-3);">加载失败，请重试</div>`;
+            }
+        }
+
+        function closePlayerModal() {
+            document.getElementById('playerModal').classList.remove('show');
+        }
+
+        let profileBetHistoryData = [];
+        let playerBetHistoryData = [];
+
+        function showAllBetHistory(type) {
+            const data = type === 'profile' ? profileBetHistoryData : playerBetHistoryData;
+            const content = document.getElementById('betHistoryModalContent');
+            if (data.length === 0) {
+                content.innerHTML = '<div style="text-align:center;padding:40px;font-size:12px;color:var(--text-3);">暂无记录</div>';
+            } else {
+                content.innerHTML = `
+                    <div class="bet-history-list" style="padding:0 16px;">
+                        ${data.map(b => {
+                            let resultClass = 'lose';
+                            if (b.result === '赢' || b.result === '胜') resultClass = 'win';
+                            else if (b.result === '未开始' || b.status === 'pending') resultClass = 'pending';
+                            return `
+                            <div class="bet-history-item">
+                                <div class="bet-history-league">${b.league}</div>
+                                <div class="bet-history-info">
+                                    <div class="bet-history-match">${b.match}</div>
+                                    <div class="bet-history-detail">${b.option} @ ${b.odds} · ${b.points}积分 · ${b.time}</div>
+                                </div>
+                                <div class="bet-history-result ${resultClass}">${b.result}</div>
+                            </div>
+                        `}).join('')}
+                    </div>
+                `;
+            }
+            document.getElementById('betHistoryModal').classList.add('show');
+        }
+
+        function closeBetHistoryModal() {
+            document.getElementById('betHistoryModal').classList.remove('show');
+        }
+
+        async function toggleFollow(userId, nickname, fromModal) {
+            const wasFollowing = followedPlayers.has(userId);
+            if (wasFollowing) {
+                followedPlayers.delete(userId);
+                localStorage.setItem('followedPlayers', JSON.stringify([...followedPlayers]));
+                // 更新榜单按钮
+                const btn = document.getElementById('followBtn_' + userId);
+                if (btn) { btn.classList.remove('following'); btn.textContent = '跟投'; }
+                if (fromModal) {
+                    const mb = document.getElementById('playerFollowBtn');
+                    if (mb) { mb.classList.remove('following'); mb.textContent = '跟投此玩家'; }
+                }
+            } else {
+                // 检查跟投次数限制
+                if (!isVip && followCount >= FREE_FOLLOW_LIMIT) {
+                    if (fromModal) closePlayerModal();
+                    closeUserMenu();
+                    setTimeout(() => { showVipModal(); }, 300);
+                    alert(`免费跟投次数已用完（${FREE_FOLLOW_LIMIT}次），开通会员即可无限跟投！`);
+                    return;
+                }
+                followedPlayers.add(userId);
+                localStorage.setItem('followedPlayers', JSON.stringify([...followedPlayers]));
+                // 增加跟投计数
+                if (!isVip) {
+                    followCount++;
+                    localStorage.setItem('followCount', followCount.toString());
+                    updateVipStatus();
+                }
+                // 调用后端跟投 API
+                try {
+                    await fetch(`${API_BASE}/follow_player`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({user_id: userId, follower: 'me'})
+                    });
+                } catch (e) { console.error('跟投请求失败:', e); }
+                // 更新榜单按钮
+                const btn = document.getElementById('followBtn_' + userId);
+                if (btn) { btn.classList.add('following'); btn.textContent = '已跟投'; }
+                if (fromModal) {
+                    const mb = document.getElementById('playerFollowBtn');
+                    if (mb) { mb.classList.add('following'); mb.textContent = '已跟投 - 点击取消'; }
+                }
+                // 显示跟投成功提示
+                document.getElementById('followToastMsg').textContent = `已跟投 ${nickname}，该玩家下一笔方案下注时将通知您`;
+                document.getElementById('followToast').classList.add('show');
+            }
+        }
+
+        // 格式化资金数量级
+        function formatFundsUnit(value) {
+            if (value >= 100000000) return { value: (value / 100000000).toFixed(1), unit: '亿' };
+            if (value >= 10000) return { value: (value / 10000).toFixed(0), unit: '万' };
+            return { value: value.toString(), unit: '' };
+        }
+
+        let currentFundsCurve = [];
+        let currentFundsInitial = 0;
+        let currentTimeRange = 'all';
+
+        function getFilteredCurve(curve, range) {
+            if (range === '7d') return curve.slice(-7);
+            if (range === '30d') return curve.slice(-30);
+            return curve;
+        }
+
+        function generateSmoothPath(points, chartW, chartH, padTop, padLeft, yMax, yMin) {
+            if (points.length < 2) return '';
+            const yRange = yMax - yMin || 1;
+            const coords = points.map((p, i) => {
+                const x = padLeft + (i / (points.length - 1)) * chartW;
+                const y = padTop + chartH - ((p.funds - yMin) / yRange) * chartH;
+                return { x, y };
+            });
+            let d = `M ${coords[0].x} ${coords[0].y}`;
+            for (let i = 0; i < coords.length - 1; i++) {
+                const p0 = coords[i];
+                const p1 = coords[i + 1];
+                const cpx = (p0.x + p1.x) / 2;
+                d += ` C ${cpx} ${p0.y}, ${cpx} ${p1.y}, ${p1.x} ${p1.y}`;
+            }
+            return d;
+        }
+
+        function generateAreaPath(points, chartW, chartH, padTop, padLeft, yMax, yMin) {
+            const linePath = generateSmoothPath(points, chartW, chartH, padTop, padLeft, yMax, yMin);
+            if (!linePath) return '';
+            const lastX = padLeft + chartW;
+            const firstX = padLeft;
+            const bottomY = padTop + chartH;
+            return `${linePath} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+        }
+
+        function renderFundsChart(curve, initialFunds, stats) {
+            currentFundsCurve = curve;
+            currentFundsInitial = initialFunds;
+
+            const filtered = getFilteredCurve(curve, currentTimeRange);
+            const maxF = Math.max(...filtered.map(p => p.funds));
+            const minF = Math.min(...filtered.map(p => p.funds));
+            const range = maxF - minF || 1;
+            const yMax = maxF + range * 0.15;
+            const yMin = Math.max(0, minF - range * 0.1);
+            const yRange = yMax - yMin || 1;
+
+            const currentFunds = filtered[filtered.length - 1].funds;
+            const roi = ((currentFunds - initialFunds) / initialFunds * 100).toFixed(1);
+            const roiColor = roi >= 0 ? '#10b981' : '#ef4444';
+            const winRate = stats && stats.win_rate ? stats.win_rate.toFixed(1) : '65.0';
+
+            const padLeft = 44, padRight = 16, padTop = 12, padBottom = 32;
+            const barMinWidth = 45;
+            const totalWidth = Math.max(700, curve.length * barMinWidth + padLeft + padRight);
+            const w = totalWidth, h = 220;
+            const chartW = w - padLeft - padRight;
+            const chartH = h - padTop - padBottom;
+
+            const yTicks = [0, 0.25, 0.5, 0.75, 1];
+            const gridLines = yTicks.map(t => {
+                const y = padTop + chartH - t * chartH;
+                const val = yMin + t * yRange;
+                const fmt = formatFundsUnit(Math.round(val));
+                return `<line x1="${padLeft}" y1="${y}" x2="${w-padRight}" y2="${y}" stroke="rgba(148,163,184,0.12)" stroke-width="0.8"/>
+                        <text x="${padLeft-6}" y="${y+4}" fill="#94a3b8" font-size="9.5" text-anchor="end" font-family="monospace" opacity="0.7">${fmt.value}${fmt.unit}</text>`;
+            }).join('');
+
+            const areaPath = generateAreaPath(filtered, chartW, chartH, padTop, padLeft, yMax, yMin);
+            const linePath = generateSmoothPath(filtered, chartW, chartH, padTop, padLeft, yMax, yMin);
+
+            const dots = filtered.map((p, i) => {
+                if (i % Math.ceil(filtered.length / 6) !== 0 && i !== filtered.length - 1) return '';
+                const x = padLeft + (i / (filtered.length - 1)) * chartW;
+                const y = padTop + chartH - ((p.funds - yMin) / yRange) * chartH;
+                return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="#fff" stroke="#3b82f6" stroke-width="1.5"/>`;
+            }).join('');
+
+            const xLabels = filtered.map((p, i) => {
+                const x = padLeft + (i / (filtered.length - 1)) * chartW;
+                return `<text x="${x}" y="${h-10}" fill="#94a3b8" font-size="9" text-anchor="middle" opacity="0.8">${p.date}</text>`;
+            }).join('');
+
+            const chartId = 'fchart_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+
+            const winRateVal = stats && stats.win_rate ? stats.win_rate : 65;
+
+            const html = `
+            <div class="funds-module" data-winrate="${winRateVal}">
+                <div class="funds-chart-header">
+                    <div class="funds-chart-title">资金增长趋势</div>
+                    <div class="funds-time-tabs">
+                        <button class="funds-time-tab ${currentTimeRange==='7d'?'active':''}" onclick="switchTimeRange('7d')">近7天</button>
+                        <button class="funds-time-tab ${currentTimeRange==='30d'?'active':''}" onclick="switchTimeRange('30d')">近1月</button>
+                        <button class="funds-time-tab ${currentTimeRange==='all'?'active':''}" onclick="switchTimeRange('all')">全量档案</button>
+                    </div>
+                </div>
+                <div class="funds-chart-scroll" id="${chartId}_scroll">
+                    <svg class="funds-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <linearGradient id="areaGrad_${chartId}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
+                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                            </linearGradient>
+                        </defs>
+                        ${gridLines}
+                        ${areaPath ? `<path d="${areaPath}" fill="url(#areaGrad_${chartId})"/>` : ''}
+                        ${linePath ? `<path d="${linePath}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>` : ''}
+                        ${dots}
+                        ${xLabels}
+                    </svg>
+                </div>
+            </div>`;
+
+            setTimeout(() => {
+                const scroll = document.getElementById(chartId + '_scroll');
+                if (scroll) scroll.scrollLeft = scroll.scrollWidth;
+            }, 30);
+            return html;
+        }
+
+        function switchTimeRange(range) {
+            currentTimeRange = range;
+            if (currentFundsCurve.length === 0) return;
+            // 找到当前可见的图表模块（玩家弹窗或个人中心）
+            const playerModule = document.querySelector('#playerModal .funds-module');
+            const profileModule = document.querySelector('#profilePage .funds-module');
+            const targetModule = playerModule || profileModule;
+            if (!targetModule) return;
+            const winRate = parseFloat(targetModule.getAttribute('data-winrate') || '65');
+            const newHtml = renderFundsChart(currentFundsCurve, currentFundsInitial, { win_rate: winRate });
+            targetModule.outerHTML = newHtml;
+        }
+
+        function renderFundsKLineSVG(curve, initialFunds, stats) {
+            return renderFundsChart(curve, initialFunds, stats);
+        }
+
+        async function loadUserProfile() {
+            try {
+                const res = await fetch(`${API_BASE}/get_user_profile`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const d = data.data;
+                    const fundsStr = (d.current_funds / 10000).toFixed(1) + '万';
+                    const growthColor = d.growth_rate > 0 ? 'var(--success)' : 'var(--danger)';
+
+                    // 渲染头像信息
+                    document.getElementById('profileHeader').innerHTML = `
+                        <div class="profile-header">
+                            <div class="profile-avatar">${d.avatar}</div>
+                            <div class="profile-info">
+                                <div class="profile-name">${d.nickname}</div>
+                                <div class="profile-id">ID: ${d.user_id}</div>
+                                <div class="profile-level">Lv.${d.level} ${d.title}</div>
+                            </div>
+                        </div>`;
+
+                    // 渲染统计数据（和玩家详情一样的四项）
+                    document.getElementById('profileStats').innerHTML = `
+                        <div class="player-stats-row" style="padding:0;">
+                            <div class="player-stat">
+                                <div class="player-stat-value" style="color:${growthColor}">+${d.growth_rate}%</div>
+                                <div class="player-stat-label">资金增长率</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${fundsStr}</div>
+                                <div class="player-stat-label">当前资金</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${d.stats.total_predictions}</div>
+                                <div class="player-stat-label">总推演场次</div>
+                            </div>
+                            <div class="player-stat">
+                                <div class="player-stat-value">${d.stats.win_rate}%</div>
+                                <div class="player-stat-label">胜率</div>
+                            </div>
+                        </div>`;
+
+                    // 渲染 K 线图
+                    document.getElementById('profileFundsChart').innerHTML = renderFundsKLineSVG(d.funds_curve, d.initial_funds, d.stats);
+
+                    const localHistory = getLocalBetHistory();
+                    const serverHistory = d.bet_history || [];
+                    const mergedHistory = [...localHistory, ...serverHistory];
+                    profileBetHistoryData = mergedHistory;
+
+                    const displayHistory = mergedHistory.slice(0, 6);
+                    document.getElementById('profileBetHistory').innerHTML = displayHistory.map(b => {
+                        let resultClass = 'lose';
+                        if (b.result === '赢' || b.result === '胜') resultClass = 'win';
+                        else if (b.result === '未开始' || b.status === 'pending') resultClass = 'pending';
+                        return `
+                        <div class="bet-history-item">
+                            <div class="bet-history-league">${b.league}</div>
+                            <div class="bet-history-info">
+                                <div class="bet-history-match">${b.match}</div>
+                                <div class="bet-history-detail">${b.option} @ ${b.odds} · ${b.points}积分 · ${b.time}</div>
+                            </div>
+                            <div class="bet-history-result ${resultClass}">${b.result}</div>
+                        </div>
+                    `}).join('');
+
+                    // 渲染破产记录
+                    const bankruptcyRecords = getBankruptcyRecords();
+                    document.getElementById('bankruptcyCount').textContent = `共 ${bankruptcyRecords.length} 次`;
+                    if (bankruptcyRecords.length === 0) {
+                        document.getElementById('bankruptcyList').innerHTML = `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text-3);">暂无破产记录</div>`;
+                    } else {
+                        document.getElementById('bankruptcyList').innerHTML = bankruptcyRecords.map((r, i) => `
+                            <div class="bet-history-item">
+                                <div class="bet-history-league" style="background:var(--danger-bg);color:var(--danger);">第${i+1}次</div>
+                                <div class="bet-history-info">
+                                    <div class="bet-history-match">破产清算</div>
+                                    <div class="bet-history-detail">${r.date} ${r.time}</div>
+                                </div>
+                                <div class="bet-history-result lose">破产</div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (e) {
+                console.error('加载用户数据失败:', e);
+            }
+        }
+
+        function openUserMenu() {
+            document.getElementById('userMenuModal').classList.add('show');
+        }
+
+        function closeUserMenu() {
+            document.getElementById('userMenuModal').classList.remove('show');
+        }
+
+        function closeEditModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function showEditNickname() {
+            closeUserMenu();
+            document.getElementById('newNicknameInput').value = currentUser.username;
+            setTimeout(() => {
+                document.getElementById('editNicknameModal').classList.add('show');
+                document.getElementById('newNicknameInput').focus();
+            }, 200);
+        }
+
+        function saveNickname() {
+            const newName = document.getElementById('newNicknameInput').value.trim();
+            if (!newName) {
+                alert('昵称不能为空');
+                return;
+            }
+            if (newName.length > 12) {
+                alert('昵称不能超过12个字符');
+                return;
+            }
+            currentUser.username = newName;
+            saveUser();
+            closeEditModal('editNicknameModal');
+        }
+
+        function showEditAvatar() {
+            closeUserMenu();
+            selectedAvatar = currentUser.avatar;
+            const container = document.getElementById('avatarSelector');
+            container.innerHTML = AVATAR_OPTIONS.map(a => `
+                <div class="avatar-option ${a === selectedAvatar ? 'selected' : ''}" onclick="selectAvatar('${a}')">${a}</div>
+            `).join('');
+            setTimeout(() => {
+                document.getElementById('editAvatarModal').classList.add('show');
+            }, 200);
+        }
+
+        function selectAvatar(avatar) {
+            selectedAvatar = avatar;
+            document.querySelectorAll('.avatar-option').forEach(el => {
+                el.classList.toggle('selected', el.textContent === avatar);
+            });
+        }
+
+        function saveAvatar() {
+            currentUser.avatar = selectedAvatar;
+            saveUser();
+            closeEditModal('editAvatarModal');
+        }
+
+        function showEditPassword() {
+            closeUserMenu();
+            document.getElementById('oldPasswordInput').value = '';
+            document.getElementById('newPasswordInput').value = '';
+            document.getElementById('confirmPasswordInput').value = '';
+            setTimeout(() => {
+                document.getElementById('editPasswordModal').classList.add('show');
+            }, 200);
+        }
+
+        function savePassword() {
+            const oldPwd = document.getElementById('oldPasswordInput').value;
+            const newPwd = document.getElementById('newPasswordInput').value;
+            const confirmPwd = document.getElementById('confirmPasswordInput').value;
+
+            if (oldPwd !== currentUser.password) {
+                alert('原密码错误');
+                return;
+            }
+            if (newPwd.length < 6 || newPwd.length > 16) {
+                alert('新密码长度应为6-16位');
+                return;
+            }
+            if (newPwd !== confirmPwd) {
+                alert('两次输入的新密码不一致');
+                return;
+            }
+            currentUser.password = newPwd;
+            saveUser();
+            closeEditModal('editPasswordModal');
+            alert('密码修改成功');
+        }
+
+        function showSwitchAccount() {
+            closeUserMenu();
+            document.getElementById('switchAccountInput').value = '';
+            document.getElementById('switchPasswordInput').value = '';
+            setTimeout(() => {
+                document.getElementById('switchAccountModal').classList.add('show');
+            }, 200);
+        }
+
+        function doSwitchAccount() {
+            const account = document.getElementById('switchAccountInput').value.trim();
+            const pwd = document.getElementById('switchPasswordInput').value;
+            if (!account || !pwd) {
+                alert('请输入账号和密码');
+                return;
+            }
+            currentUser = {
+                username: account,
+                avatar: AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)],
+                password: pwd,
+                userId: 'USER' + Date.now().toString().slice(-6)
+            };
+            saveUser();
+            closeEditModal('switchAccountModal');
+            alert('登录成功');
+        }
+
+        function logout() {
+            if (!confirm('确定要退出登录吗？')) return;
+            closeUserMenu();
+            currentUser = {
+                username: '懂球帝',
+                avatar: '球',
+                password: '123456',
+                userId: 'DQD001'
+            };
+            saveUser();
+            alert('已退出登录');
+        }
+
+        function updateVipStatus() {
+            const btn = document.getElementById('vipEntryBtn');
+            if (isVip) {
+                const expireStr = vipExpire.toLocaleDateString('zh-CN');
+                btn.textContent = '👑 VIP会员';
+                btn.classList.add('vip-active');
+                btn.title = `会员有效期至 ${expireStr}`;
+            } else {
+                const remaining = FREE_FOLLOW_LIMIT - followCount;
+                btn.textContent = '👑 开通会员';
+                btn.classList.remove('vip-active');
+                btn.title = remaining > 0 ? `免费跟投剩余 ${remaining} 次` : '免费跟投次数已用完';
+            }
+        }
+
+        function showVipModal() {
+            closeUserMenu();
+            const btn = document.querySelector('.vip-pay-btn');
+            if (isVip) {
+                btn.textContent = '续费 ¥99/月';
+            } else {
+                btn.textContent = '立即开通 ¥99/月';
+            }
+            document.getElementById('vipModal').classList.add('show');
+        }
+
+        function selectPayMethod(method) {
+            selectedPayMethod = method;
+            document.getElementById('payWechat').classList.toggle('selected', method === 'wechat');
+            document.getElementById('payAlipay').classList.toggle('selected', method === 'alipay');
+        }
+
+        function payVip() {
+            const methodName = selectedPayMethod === 'wechat' ? '微信支付' : '支付宝';
+            if (!confirm(`确认使用${methodName}支付 ¥99 开通/续费量化Pro会员（1个月）？`)) return;
+
+            // 模拟支付流程
+            const btn = document.querySelector('.vip-pay-btn');
+            const originalText = btn.textContent;
+            btn.textContent = '支付处理中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // 支付成功
+                const expire = new Date();
+                expire.setMonth(expire.getMonth() + 1);
+                vipExpire = expire;
+                isVip = true;
+                localStorage.setItem('vipExpire', expire.toISOString());
+
+                btn.textContent = originalText;
+                btn.disabled = false;
+                closeEditModal('vipModal');
+                updateVipStatus();
+
+                alert(`${methodName}支付成功！\n会员有效期至：${expire.toLocaleDateString('zh-CN')}\n\n您已解锁无限跟投等全部会员权益！`);
+            }, 1500);
+        }
+
+        window.addEventListener('load', init);
+
+        let adminMatches = [];
+        let currentAdminTab = 'edit';
+
+        function showAdminLogin() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminLoginModal').classList.add('show');
+            setTimeout(() => document.getElementById('adminPasswordInput').focus(), 100);
+        }
+
+        async function verifyAdmin() {
+            const pwd = document.getElementById('adminPasswordInput').value;
+            try {
+                const res = await fetch(`${API_BASE}/admin_verify`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pwd})
+                });
+                if (res.ok) {
+                    closeEditModal('adminLoginModal');
+                    openAdminPanel();
+                } else {
+                    alert('密码错误，请重试');
+                }
+            } catch (e) {
+                alert('网络错误，请重试');
+            }
+        }
+
+        function openAdminPanel() {
+            adminMatches = JSON.parse(JSON.stringify(Object.values(matchDataCache)));
+            if (adminMatches.length === 0) {
+                adminMatches = [
+                    { id: 1, league: '英超', home_team: '曼联', away_team: '利物浦', match_time: '2024-01-15 20:30', status: '未开始',
+                      indices: { home_win: 2.10, draw: 3.20, away_win: 3.50 },
+                      handicap: -1, handicap_indices: { home_win: 2.50, draw: 3.10, away_win: 2.80 },
+                      score_options: { "1:0":9.0, "2:0":13.0, "2:1":8.5, "3:0":18.0, "3:1":15.0, "3:2":18.0, "4:0":25.0, "4:1":28.0, "4:2":50.0, "4:3":80.0, "5:0":40.0, "5:1":60.0, "5:2":100.0, "5:3":150.0, "5:4":200.0, "win_other":250.0, "0:0":7.5, "1:1":6.0, "2:2":10.0, "3:3":40.0, "4:4":150.0, "5:5":400.0, "draw_other":500.0, "0:1":11.0, "0:2":15.0, "1:2":12.0, "0:3":22.0, "1:3":20.0, "2:3":25.0, "0:4":30.0, "1:4":35.0, "2:4":50.0, "3:4":80.0, "0:5":50.0, "1:5":70.0, "2:5":90.0, "3:5":150.0, "4:5":200.0, "lose_other":250.0 },
+                      total_goals: { "0":7.5, "1":4.0, "2":3.2, "3":4.0, "4":6.5, "5":10.0, "6":15.0, "7+":25.0 },
+                      half_time_full_time: { "home_home":3.5, "home_draw":12.0, "home_away":28.0, "draw_home":6.5, "draw_draw":5.0, "draw_away":8.5, "away_home":22.0, "away_draw":13.0, "away_away":6.0 } }
+                ];
+            }
+            renderAdminMatches();
+            document.getElementById('adminModal').classList.add('show');
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.remove('show');
+        }
+
+        function switchAdminTab(tab) {
+            currentAdminTab = tab;
+            document.getElementById('adminTabEdit').classList.toggle('active', tab === 'edit');
+            document.getElementById('adminTabImport').classList.toggle('active', tab === 'import');
+            document.getElementById('adminEditBody').style.display = tab === 'edit' ? 'block' : 'none';
+            document.getElementById('adminImportBody').style.display = tab === 'import' ? 'block' : 'none';
+            document.getElementById('adminAddBtn').style.display = tab === 'edit' ? 'block' : 'none';
+        }
+
+        function normalizeScoreOptions(score) {
+            if (!score) score = {};
+            const full = {
+                "1:0":9.0, "2:0":13.0, "2:1":8.5, "3:0":18.0, "3:1":15.0,
+                "3:2":18.0, "4:0":25.0, "4:1":28.0, "4:2":50.0, "4:3":80.0,
+                "5:0":40.0, "5:1":60.0, "5:2":100.0, "5:3":150.0, "5:4":200.0,
+                "win_other":250.0,
+                "0:0":7.5, "1:1":6.0, "2:2":10.0, "3:3":40.0, "4:4":150.0, "5:5":400.0,
+                "draw_other":500.0,
+                "0:1":11.0, "0:2":15.0, "1:2":12.0, "0:3":22.0, "1:3":20.0,
+                "2:3":25.0, "0:4":30.0, "1:4":35.0, "2:4":50.0, "3:4":80.0,
+                "0:5":50.0, "1:5":70.0, "2:5":90.0, "3:5":150.0, "4:5":200.0,
+                "lose_other":250.0
+            };
+            for (const k of Object.keys(full)) {
+                if (score[k] !== undefined && score[k] > 0) {
+                    full[k] = score[k];
+                }
+            }
+            if (score.other && score.other > 0) {
+                if (!score.win_other) full.win_other = score.other;
+                if (!score.draw_other) full.draw_other = score.other;
+                if (!score.lose_other) full.lose_other = score.other;
+            }
+            return full;
+        }
+
+        function renderAdminMatches() {
+            const body = document.getElementById('adminEditBody');
+            body.innerHTML = adminMatches.map((m, idx) => {
+                if (!m.indices) m.indices = { home_win: 2.00, draw: 3.00, away_win: 3.00 };
+                if (!m.handicap_indices) m.handicap_indices = { home_win: 2.00, draw: 3.00, away_win: 3.00 };
+                if (!m.handicap) m.handicap = -1;
+                m.score_options = normalizeScoreOptions(m.score_options);
+                if (!m.total_goals) m.total_goals = { "0":7.5, "1":4.0, "2":3.2, "3":4.0, "4":6.5, "5":10.0, "6":15.0, "7+":25.0 };
+                if (!m.half_time_full_time) m.half_time_full_time = { "home_home":3.5, "home_draw":12.0, "home_away":28.0, "draw_home":6.5, "draw_draw":5.0, "draw_away":8.5, "away_home":22.0, "away_draw":13.0, "away_away":6.0 };
+
+                const scoreKeys = Object.keys(m.score_options);
+                const scoreLabelMap = {'win_other':'胜其他','draw_other':'平其他','lose_other':'负其他'};
+                const hfLabels = {
+                    "home_home": "胜/胜", "home_draw": "胜/平", "home_away": "胜/负",
+                    "draw_home": "平/胜", "draw_draw": "平/平", "draw_away": "平/负",
+                    "away_home": "负/胜", "away_draw": "负/平", "away_away": "负/负"
+                };
+
+                return `
+                <div class="admin-match-item" data-idx="${idx}">
+                    <div class="admin-match-header">
+                        <input class="admin-input" style="flex:0 0 80px;" value="${m.league}" placeholder="联赛" onchange="updateAdminMatch(${idx}, 'league', this.value)">
+                        <div class="admin-match-delete" onclick="deleteAdminMatch(${idx})">删除</div>
+                    </div>
+                    <div class="admin-match-row">
+                        <div style="flex:1;">
+                            <label class="admin-label">主队</label>
+                            <input class="admin-input" value="${m.home_team}" onchange="updateAdminMatch(${idx}, 'home_team', this.value)">
+                        </div>
+                        <div style="flex:1;">
+                            <label class="admin-label">客队</label>
+                            <input class="admin-input" value="${m.away_team}" onchange="updateAdminMatch(${idx}, 'away_team', this.value)">
+                        </div>
+                    </div>
+                    <div class="admin-match-row">
+                        <div style="flex:1;">
+                            <label class="admin-label">比赛时间</label>
+                            <input class="admin-input" value="${m.match_time}" onchange="updateAdminMatch(${idx}, 'match_time', this.value)">
+                        </div>
+                        <div style="flex:0 0 80px;">
+                            <label class="admin-label">状态</label>
+                            <input class="admin-input" value="${m.status}" onchange="updateAdminMatch(${idx}, 'status', this.value)">
+                        </div>
+                    </div>
+                    <div class="admin-playtype-tabs">
+                        <div class="admin-playtype-tab active" onclick="switchAdminPlayType(${idx}, 'spf')">胜平负</div>
+                        <div class="admin-playtype-tab" onclick="switchAdminPlayType(${idx}, 'rspf')">让球</div>
+                        <div class="admin-playtype-tab" onclick="switchAdminPlayType(${idx}, 'score')">比分</div>
+                        <div class="admin-playtype-tab" onclick="switchAdminPlayType(${idx}, 'total')">总进球</div>
+                        <div class="admin-playtype-tab" onclick="switchAdminPlayType(${idx}, 'hf')">半全场</div>
+                    </div>
+                    <div class="admin-playtype-body active" id="pt-${idx}-spf">
+                        <div class="admin-odds-grid">
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">主胜</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.indices.home_win}" onchange="updateAdminIndex(${idx}, 'indices', 'home_win', this.value)">
+                            </div>
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">平局</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.indices.draw}" onchange="updateAdminIndex(${idx}, 'indices', 'draw', this.value)">
+                            </div>
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">客胜</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.indices.away_win}" onchange="updateAdminIndex(${idx}, 'indices', 'away_win', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="admin-playtype-body" id="pt-${idx}-rspf">
+                        <div class="admin-handicap-row">
+                            <span class="admin-label" style="margin:0;">让球：</span>
+                            <select class="admin-handicap-select" onchange="updateAdminMatch(${idx}, 'handicap', parseInt(this.value))">
+                                <option value="-2" ${m.handicap===-2?'selected':''}>-2 主队让2球</option>
+                                <option value="-1" ${m.handicap===-1?'selected':''}>-1 主队让1球</option>
+                                <option value="1" ${m.handicap===1?'selected':''}>+1 主队受让1球</option>
+                                <option value="2" ${m.handicap===2?'selected':''}>+2 主队受让2球</option>
+                            </select>
+                        </div>
+                        <div class="admin-odds-grid">
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">主胜</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.handicap_indices.home_win}" onchange="updateAdminIndex(${idx}, 'handicap_indices', 'home_win', this.value)">
+                            </div>
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">平局</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.handicap_indices.draw}" onchange="updateAdminIndex(${idx}, 'handicap_indices', 'draw', this.value)">
+                            </div>
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">客胜</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.handicap_indices.away_win}" onchange="updateAdminIndex(${idx}, 'handicap_indices', 'away_win', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="admin-playtype-body" id="pt-${idx}-score">
+                        <div class="admin-odds-grid score-grid">
+                            ${scoreKeys.map(key => `
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">${scoreLabelMap[key] || key}</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.score_options[key]}" onchange="updateAdminIndex(${idx}, 'score_options', '${key}', this.value)">
+                            </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="admin-playtype-body" id="pt-${idx}-total">
+                        <div class="admin-odds-grid">
+                            ${Object.keys(m.total_goals).map(key => `
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">${key}球</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.total_goals[key]}" onchange="updateAdminIndex(${idx}, 'total_goals', '${key}', this.value)">
+                            </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="admin-playtype-body" id="pt-${idx}-hf">
+                        <div class="admin-odds-grid">
+                            ${Object.keys(m.half_time_full_time).map(key => `
+                            <div class="admin-odds-item">
+                                <span class="admin-odds-label">${hfLabels[key]}</span>
+                                <input class="admin-odds-input" type="number" step="0.01" value="${m.half_time_full_time[key]}" onchange="updateAdminIndex(${idx}, 'half_time_full_time', '${key}', this.value)">
+                            </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function updateAdminMatch(idx, field, value) {
+            adminMatches[idx][field] = value;
+        }
+
+        function updateAdminIndex(idx, group, key, value) {
+            if (!adminMatches[idx][group]) adminMatches[idx][group] = {};
+            adminMatches[idx][group][key] = parseFloat(value) || 0;
+        }
+
+        function switchAdminPlayType(idx, type) {
+            const tabs = document.querySelectorAll(`.admin-match-item[data-idx="${idx}"] .admin-playtype-tab`);
+            tabs.forEach(t => t.classList.remove('active'));
+            const bodies = document.querySelectorAll(`.admin-match-item[data-idx="${idx}"] .admin-playtype-body`);
+            bodies.forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`pt-${idx}-${type}`).classList.add('active');
+        }
+
+        function addAdminMatch() {
+            const newId = adminMatches.length > 0 ? Math.max(...adminMatches.map(m => m.id)) + 1 : 1;
+            adminMatches.push({
+                id: newId, league: '英超', home_team: '主队', away_team: '客队',
+                match_time: '2024-01-01 20:00', status: '未开始',
+                indices: { home_win: 2.00, draw: 3.00, away_win: 3.00 },
+                handicap: -1,
+                handicap_indices: { home_win: 2.00, draw: 3.00, away_win: 3.00 },
+                score_options: { "1:0":9.0, "2:0":13.0, "2:1":8.5, "3:0":18.0, "3:1":15.0, "3:2":18.0, "4:0":25.0, "4:1":28.0, "4:2":50.0, "4:3":80.0, "5:0":40.0, "5:1":60.0, "5:2":100.0, "5:3":150.0, "5:4":200.0, "win_other":250.0, "0:0":7.5, "1:1":6.0, "2:2":10.0, "3:3":40.0, "4:4":150.0, "5:5":400.0, "draw_other":500.0, "0:1":11.0, "0:2":15.0, "1:2":12.0, "0:3":22.0, "1:3":20.0, "2:3":25.0, "0:4":30.0, "1:4":35.0, "2:4":50.0, "3:4":80.0, "0:5":50.0, "1:5":70.0, "2:5":90.0, "3:5":150.0, "4:5":200.0, "lose_other":250.0 },
+                total_goals: { "0":7.5, "1":4.0, "2":3.2, "3":4.0, "4":6.5, "5":10.0, "6":15.0, "7+":25.0 },
+                half_time_full_time: { "home_home":3.5, "home_draw":12.0, "home_away":28.0, "draw_home":6.5, "draw_draw":5.0, "draw_away":8.5, "away_home":22.0, "away_draw":13.0, "away_away":6.0 }
+            });
+            renderAdminMatches();
+            const body = document.getElementById('adminEditBody');
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function deleteAdminMatch(idx) {
+            if (!confirm('确定删除这场比赛？')) return;
+            adminMatches.splice(idx, 1);
+            renderAdminMatches();
+        }
+
+        function saveAdminMatches() {
+            if (currentAdminTab === 'import') {
+                const text = document.getElementById('importTextarea').value.trim();
+                if (!text) { alert('请输入或粘贴比赛数据'); return; }
+                const parsed = smartParseMatches(text);
+                if (parsed.length === 0) {
+                    alert('未能识别到比赛数据，请检查粘贴的内容是否包含比赛信息');
+                    return;
+                }
+                adminMatches = parsed;
+                switchAdminTab('edit');
+                renderAdminMatches();
+                // 显示缺失信息
+                if (window._adminMissingInfo && window._adminMissingInfo.length > 0) {
+                    alert(`已识别 ${parsed.length} 场比赛，以下信息缺失（已用默认值填充）：\n\n${window._adminMissingInfo.join('\n')}\n\n请检查并手动补充缺失项`);
+                }
+            }
+
+            if (adminMatches.length === 0) {
+                alert('至少保留一场比赛');
+                return;
+            }
+
+            matchDataCache = {};
+            adminMatches.forEach(m => {
+                matchDataCache[m.id] = m;
+            });
+
+            localStorage.setItem('adminMatches', JSON.stringify(adminMatches));
+
+            renderMatches(adminMatches);
+            loadHomeData();
+            alert(`保存成功！共 ${adminMatches.length} 场比赛数据已更新，请检查录入结果`);
+        }
+
+        function smartParseMatches(text) {
+            const results = [];
+            const missingInfo = [];
+            const leagues = ['英超','西甲','意甲','德甲','法甲','中超','亚冠','欧冠','欧联','国王杯','足总杯','联赛杯','英冠','荷甲','葡超','比甲','苏超','巴甲','阿甲','美职联','日职联','韩K联','韩职','澳超','俄超','乌超','土超','希超','丹超','瑞典超','挪超','芬超','波超','捷甲','奥甲','瑞士超','美职业','大联盟'];
+
+            function createDefaultMatch(id) {
+                return {
+                    id: id, league: '竞彩足球', home_team: '', away_team: '',
+                    match_time: '', status: '未开始',
+                    indices: { home_win: 0, draw: 0, away_win: 0 },
+                    handicap: -1,
+                    handicap_indices: { home_win: 0, draw: 0, away_win: 0 },
+                    score_options: { "1:0":0, "2:0":0, "2:1":0, "3:0":0, "3:1":0, "3:2":0, "4:0":0, "4:1":0, "4:2":0, "4:3":0, "5:0":0, "5:1":0, "5:2":0, "5:3":0, "5:4":0, "win_other":0, "0:0":0, "1:1":0, "2:2":0, "3:3":0, "4:4":0, "5:5":0, "draw_other":0, "0:1":0, "0:2":0, "1:2":0, "0:3":0, "1:3":0, "2:3":0, "0:4":0, "1:4":0, "2:4":0, "3:4":0, "0:5":0, "1:5":0, "2:5":0, "3:5":0, "4:5":0, "lose_other":0 },
+                    total_goals: { "0":0, "1":0, "2":0, "3":0, "4":0, "5":0, "6":0, "7+":0 },
+                    half_time_full_time: { "home_home":0, "home_draw":0, "home_away":0, "draw_home":0, "draw_draw":0, "draw_away":0, "away_home":0, "away_draw":0, "away_away":0 }
+                };
+            }
+
+            // 按开赛时间分割多场比赛
+            let blocks = [];
+            if (text.includes('开赛时间')) {
+                const parts = text.split(/(?=开赛时间)/);
+                blocks = parts.filter(p => p.trim().length > 10);
+            } else if (text.includes('联赛：') || text.includes('联赛:')) {
+                const parts = text.split(/(?=联赛[：:])/);
+                blocks = parts.filter(p => p.trim().length > 10);
+            } else {
+                blocks = [text];
+            }
+
+            let matchId = 1;
+
+            for (let block of blocks) {
+                if (block.trim().length < 5) continue;
+                const match = createDefaultMatch(matchId);
+                const missing = [];
+                let hasAnyData = false;
+
+                // 1. 提取开赛时间
+                const timeMatch = block.match(/开赛时间[：:]\s*(\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2})/) ||
+                                  block.match(/(\d{1,2}[-\/]\d{1,2}[-\/]?\d*\s+\d{1,2}:\d{2})/) ||
+                                  block.match(/时间[：:]\s*(\d{1,2}:\d{2})/);
+                if (timeMatch) {
+                    match.match_time = timeMatch[1] || timeMatch[0];
+                    hasAnyData = true;
+                }
+
+                // 2. 提取联赛
+                const leagueMatch = block.match(/联赛[：:]\s*([\u4e00-\u9fa5A-Za-z]+)/);
+                if (leagueMatch) {
+                    match.league = leagueMatch[1].trim();
+                    hasAnyData = true;
+                } else {
+                    for (const lg of leagues) {
+                        if (block.includes(lg)) { match.league = lg; hasAnyData = true; break; }
+                    }
+                }
+
+                // 3. 提取球队名
+                // 从"主队XXX取胜"和"客队XXX取胜"提取
+                const homeTeamMatch = block.match(/主队\s*([\u4e00-\u9fa5A-Za-z0-9FC]+)\s*取胜/) ||
+                                      block.match(/主队[：:]\s*([\u4e00-\u9fa5A-Za-z0-9FC]+)/);
+                const awayTeamMatch = block.match(/客队\s*([\u4e00-\u9fa5A-Za-z0-9FC]+)\s*取胜/) ||
+                                      block.match(/客队[：:]\s*([\u4e00-\u9fa5A-Za-z0-9FC]+)/);
+                if (homeTeamMatch) { match.home_team = homeTeamMatch[1].trim(); hasAnyData = true; }
+                if (awayTeamMatch) { match.away_team = awayTeamMatch[1].trim(); hasAnyData = true; }
+
+                // 从"XXX让Y球"提取主队
+                if (!match.home_team) {
+                    const handicapTeamMatch = block.match(/([\u4e00-\u9fa5A-Za-z0-9FC]+)让(\d+)球/);
+                    if (handicapTeamMatch) { match.home_team = handicapTeamMatch[1].trim(); hasAnyData = true; }
+                }
+
+                // 从VS格式提取
+                if (!match.home_team || !match.away_team) {
+                    const vsMatch = block.match(/([\u4e00-\u9fa5A-Za-z0-9FC·]+)\s*(?:VS|vs|对阵|—|－|vs\.?)\s*([\u4e00-\u9fa5A-Za-z0-9FC·]+)/);
+                    if (vsMatch) {
+                        if (!match.home_team) match.home_team = vsMatch[1].trim();
+                        if (!match.away_team) match.away_team = vsMatch[2].trim();
+                        hasAnyData = true;
+                    }
+                }
+
+                // 4. 提取胜平负赔率
+                const hwMatch = block.match(/主胜[：:]\s*(\d+\.?\d*)/);
+                const dMatch = block.match(/平局[：:]\s*(\d+\.?\d*)/);
+                const awMatch = block.match(/(?:客负|客胜)[：:]\s*(\d+\.?\d*)/);
+                if (hwMatch) { match.indices.home_win = parseFloat(hwMatch[1]); match.handicap_indices.home_win = parseFloat(hwMatch[1]); hasAnyData = true; }
+                if (dMatch) { match.indices.draw = parseFloat(dMatch[1]); match.handicap_indices.draw = parseFloat(dMatch[1]); }
+                if (awMatch) { match.indices.away_win = parseFloat(awMatch[1]); match.handicap_indices.away_win = parseFloat(awMatch[1]); }
+
+                // 5. 提取让球胜平负
+                const handicapValMatch = block.match(/让[-]?(\d+)球/);
+                if (handicapValMatch) match.handicap = -parseInt(handicapValMatch[1]);
+                const rhwMatch = block.match(/让胜[：:]\s*(\d+\.?\d*)/);
+                const rdMatch = block.match(/让平[：:]\s*(\d+\.?\d*)/);
+                const rawMatch = block.match(/让负[：:]\s*(\d+\.?\d*)/);
+                if (rhwMatch) { match.handicap_indices.home_win = parseFloat(rhwMatch[1]); hasAnyData = true; }
+                if (rdMatch) { match.handicap_indices.draw = parseFloat(rdMatch[1]); }
+                if (rawMatch) { match.handicap_indices.away_win = parseFloat(rawMatch[1]); }
+
+                // 6. 提取比分赔率 (格式: 1:0 = 5.35 或 1:0：5.35)
+                const scoreRegex = /(\d+:\d+)\s*[=：:]\s*(\d+\.?\d*)/g;
+                let scoreM;
+                while ((scoreM = scoreRegex.exec(block)) !== null) {
+                    const score = scoreM[1];
+                    const odds = parseFloat(scoreM[2]);
+                    if (match.score_options.hasOwnProperty(score)) {
+                        match.score_options[score] = odds;
+                        hasAnyData = true;
+                    }
+                }
+                // 胜其它/平其它/负其它
+                const winOtherM = block.match(/胜其它\s*[=：:]\s*(\d+\.?\d*)/) || block.match(/胜其他\s*[=：:]\s*(\d+\.?\d*)/);
+                const drawOtherM = block.match(/平其它\s*[=：:]\s*(\d+\.?\d*)/) || block.match(/平其他\s*[=：:]\s*(\d+\.?\d*)/);
+                const loseOtherM = block.match(/负其它\s*[=：:]\s*(\d+\.?\d*)/) || block.match(/负其他\s*[=：:]\s*(\d+\.?\d*)/);
+                if (winOtherM) { match.score_options.win_other = parseFloat(winOtherM[1]); hasAnyData = true; }
+                if (drawOtherM) { match.score_options.draw_other = parseFloat(drawOtherM[1]); hasAnyData = true; }
+                if (loseOtherM) { match.score_options.lose_other = parseFloat(loseOtherM[1]); hasAnyData = true; }
+
+                // 7. 提取总进球数 (格式: 0球：8.00 或 7球及以上：41.00)
+                const goalsRegex = /(\d+)球(?:及以上)?[：:]\s*(\d+\.?\d*)/g;
+                let goalsM;
+                while ((goalsM = goalsRegex.exec(block)) !== null) {
+                    const g = goalsM[1];
+                    const odds = parseFloat(goalsM[2]);
+                    const key = (parseInt(g) >= 7) ? '7+' : g;
+                    if (match.total_goals.hasOwnProperty(key)) {
+                        match.total_goals[key] = odds;
+                        hasAnyData = true;
+                    }
+                }
+
+                // 8. 提取半全场 (格式: 胜胜：2.60)
+                const hfMap = {
+                    '胜胜': 'home_home', '胜平': 'home_draw', '胜负': 'home_away',
+                    '平胜': 'draw_home', '平平': 'draw_draw', '平负': 'draw_away',
+                    '负胜': 'away_home', '负平': 'away_draw', '负负': 'away_away'
+                };
+                for (const [cn, key] of Object.entries(hfMap)) {
+                    const hfM = block.match(new RegExp(cn + '[：:]\\s*(\\d+\\.?\\d*)'));
+                    if (hfM) { match.half_time_full_time[key] = parseFloat(hfM[1]); hasAnyData = true; }
+                }
+
+                // 9. 尝试管道格式
+                if (!hasAnyData && block.includes('|')) {
+                    const parts = block.split('|').map(p => p.trim());
+                    if (parts.length >= 4) {
+                        match.league = parts[0] || match.league;
+                        match.home_team = parts[1] || match.home_team;
+                        match.away_team = parts[2] || match.away_team;
+                        match.match_time = parts[3] || match.match_time;
+                        if (parts.length >= 7) {
+                            match.indices.home_win = parseFloat(parts[4]) || 0;
+                            match.indices.draw = parseFloat(parts[5]) || 0;
+                            match.indices.away_win = parseFloat(parts[6]) || 0;
+                            match.handicap_indices = {...match.indices};
+                        }
+                        hasAnyData = true;
+                    }
+                }
+
+                // 10. 检查缺失项
+                if (!match.home_team) missing.push('主队名称');
+                if (!match.away_team) missing.push('客队名称');
+                if (!match.match_time) missing.push('比赛时间');
+                if (match.indices.home_win === 0) missing.push('胜平负赔率');
+
+                // 只要有任何数据就添加
+                if (hasAnyData) {
+                    results.push(match);
+                    if (missing.length > 0) {
+                        missingInfo.push(`第${matchId}场 (${match.home_team || '?'} vs ${match.away_team || '?'}) 缺少: ${missing.join('、')}`);
+                    }
+                    matchId++;
+                }
+            }
+
+            window._adminMissingInfo = missingInfo;
+            return results;
+        }
+    </script>
+</body>
+</html>
