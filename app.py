@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import os
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 mock_matches = [
@@ -531,11 +531,13 @@ def get_user_profile():
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'index.html')
+    with open('index.html', 'r', encoding='utf-8') as f:
+        return f.read()
 
 @app.errorhandler(404)
 def not_found(e):
-    return send_from_directory('.', 'index.html')
+    with open('index.html', 'r', encoding='utf-8') as f:
+        return f.read()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
